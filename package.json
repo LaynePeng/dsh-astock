@@ -1,0 +1,71 @@
+{
+  "name": "@laynepeng/dsh-astock",
+  "version": "0.8.1",
+  "description": "A 股助手（DSH 插件）：19 个行情/选股/舆情/回测工具 + 手工交易台账 + 下单提示 + 右栏持仓·选股·维护·配置面板 + 每日自动存档与收盘净值 + 高风险邮件通知。不接任何委托通道，你在券商 App 自己下单。",
+  "license": "Apache-2.0",
+  "author": "Layne Peng <appamail@hotmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/LaynePeng/dsh-astock.git"
+  },
+  "homepage": "https://github.com/LaynePeng/dsh-astock#readme",
+  "bugs": {
+    "url": "https://github.com/LaynePeng/dsh-astock/issues"
+  },
+  "type": "module",
+  "main": "./lib/entry.js",
+  "exports": {
+    ".": "./lib/entry.js",
+    "./client": "./lib/client.js",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "cordis.patch.yml",
+    "README.md",
+    "README.en.md",
+    "ROADMAP.md",
+    "REWRITE.md",
+    "LICENSE",
+    "NOTICE"
+  ],
+  "engines": {
+    "node": ">=22.5.0",
+    "dsh": ">=0.2.0-rc.2 || >=0.2.1-rc.2 || >=0.2.2-rc.1"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/schemastery": "^3.18.2 || >=3.18.6-alpha.2 <4.0.0"
+  },
+  "keywords": [
+    "dsh-plugin",
+    "dsh",
+    "deepseek-harness",
+    "astock",
+    "a-share",
+    "stock",
+    "trading-ledger",
+    "quant",
+    "plugin"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-sidebar-right"
+      ],
+      "platform": "web"
+    }
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "scripts": {
+    "selftest": "node scripts/selftest.mjs",
+    "test": "node --test test/*.test.mjs",
+    "check:tools": "node scripts/check-tools.mjs"
+  }
+}

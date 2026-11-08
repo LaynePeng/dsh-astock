@@ -1,0 +1,53 @@
+# dsh-astock —— Cordis 装配补丁。
+#
+# 装到 DSH profile 后，本文件把插件插进 cordis 树。`name` 必须与 package.json
+# 的 name 一致（含 scope），否则装上去了也不会被装配。
+#
+# **首选在「设置 → 插件 → A股助手」里改这些值**（那里是按 lib/config-schema.js
+# 自动生成的中文表单，写入也落到本文件）。下面的 config 是等价的直接写法，
+# 适合批量/版本化配置。所有键都可选——不写就用上游 astock-plugin 的默认值。
+#
+# 台账与费用
+#   ledgerPath            台账文件路径，默认 ~/.dsh/astock-data/ledger.sqlite
+#   archivePath           本地日 K 存档，默认同目录 archive.sqlite
+#   commissionRate        佣金率（万 2.5 = 0.00025）/ minCommission 最低佣金（元）
+#   stampTaxRate          印花税（卖出）/ transferFeeRate 过户费
+# 风控阈值
+#   stopLossPct           止损线（%）
+#   takeProfitPct         止盈线（%）
+#   trailingPct           移动止盈回撤（%）
+#   positionCapPct        单票占比上限（%）
+#   addStepPct / reduceStepPct / enableAdd / enableReduce
+# 异动提醒
+#   volumeRatioAlert      放量量比阈值（倍）
+#   dropAlertPct / riseAlertPct   当日跌幅、涨幅异动阈值（%）
+# 取数
+#   rateLimitPerSec / httpTimeout / quoteCacheTtl / klineCacheTtl
+# 选股
+#   pickStrategy          momentum | reversal | quality
+#   pickMaxPositions / pickUniverse
+#   pickCashUsagePct      本轮最多动用可用现金的百分比（默认 80）
+#   pickCashReserveYuan   保留现金下限（元，默认 0）
+#   pickCandidates        技术面分析只数（默认 30）
+#   pickMinAmountYuan     最低成交额门槛（元，默认 1 亿）
+#   backtestAutoGrade     选股时顺手跑回测出推荐率（默认开）
+# 自动化
+#   archiveAutoUpdate     回测取数时顺手写存档（默认开）
+#   dailyArchive          每日 15:05 自动更新存档 + 记收盘净值（零 token，默认开）
+#   postCloseReport       工作日 15:05 盘后舆情报告（独立会话，每天一次模型调用，默认关）
+# 盯盘（DSH 定时任务，会调模型）
+#   watchIntervalSeconds  最小 300，默认 900（15 分钟）
+# 高风险邮件（插件自己定时探测，零 token）
+#   mailEnabled           开关，默认 false
+#   mailHost / mailPort / mailSecure(465→true, 587→false)
+#   mailUsername / mailPassword（多数服务商要「授权码」）
+#   mailFrom / mailTo（留空=发给自己）/ mailMinLevel(urgent|action|info)
+#   mailProbeSeconds      探测间隔，最小 60
+# 宿主侧参数
+#   （已移除）pythonPath / timeoutMs：19 个工具全部在宿主进程内跑，不再需要解释器
+# 逃生口
+#   astock                { ... }  直接写上游 snake_case 原始键，优先级最高
+- insert:
+    - id: dsh-astock
+      name: '@laynepeng/dsh-astock'
+      config: {}

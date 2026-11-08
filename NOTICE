@@ -1,0 +1,9 @@
+dsh-astock
+Copyright 2026 Layne Peng
+
+This product includes software developed as part of lite-work-plugins
+(https://github.com/LaynePeng/lite-work-plugins), licensed under the
+Apache License, Version 2.0.
+
+A 股取数与算账口径、19 个工具的名称与参数 schema 源自该项目的
+astock-plugin；DSH 宿主集成、右栏面板、维护动作与邮件通知为本项目实现。
