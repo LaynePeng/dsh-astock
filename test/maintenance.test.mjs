@@ -63,8 +63,17 @@ test('shouldRunDaily：工作日过点才跑，周末/未到点/当天已跑都�
 
 test('状态文件默认落在 ~/.dsh/astock-data，配置了台账则跟着台账目录', () => {
   assert.match(maintenanceStatePath(''), /\.dsh[\\/]astock-data[\\/]dsh-maintenance\.json$/);
-  const custom = maintenanceStatePath(join('C:', 'tmp', 'astock', 'ledger.sqlite'));
-  assert.equal(custom, join('C:', 'tmp', 'astock', 'dsh-maintenance.json'));
+
+  // 「跟着台账目录」用真实绝对路径验证：`join('C:', ...)` 在 POSIX 上是相对路径，
+  // 会被 resolve 拼到 cwd 后面，测出来的是错的（在 Windows 上它也是盘符相对路径）。
+  const dir = mkdtempSync(join(tmpdir(), 'dsh-astock-state-'));
+  assert.equal(maintenanceStatePath(join(dir, 'ledger.sqlite')), join(dir, 'dsh-maintenance.json'));
+
+  // 真在 Windows 上时，再确认一次原生盘符绝对路径不会被改写
+  if (process.platform === 'win32') {
+    const win = join('C:\\', 'tmp', 'astock', 'ledger.sqlite');
+    assert.equal(maintenanceStatePath(win), join('C:\\', 'tmp', 'astock', 'dsh-maintenance.json'));
+  }
 });
 
 test('定时器：15:05 之前不跑，过点跑一次，当天不重复', async () => {

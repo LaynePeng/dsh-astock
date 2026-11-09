@@ -22,6 +22,18 @@ import { loadClientBundle } from './client-loader.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 
+/**
+ * 整个文件用**沙箱 home**，不读真实的 `~/.dsh` / `~/.lite-work`。
+ *
+ * 之前这里用的是真实 home：默认存档目录指向 `~/.dsh/astock-data`，激活时还会
+ * 从 `~/.lite-work/astock-data` 迁移旧台账。于是同一份代码，在干净机器上全绿，
+ * 在有真实台账的开发机上「空仓」用例全红（面板里冒出天山铝业、流水 8 条）。
+ * 设置页与文档也说过台账/存档默认落在 `$DSH_HOME`，所以这里按真实语义隔离。
+ */
+const SANDBOX_HOME = mkdtempSync(join(tmpdir(), 'dsh-astock-home-'));
+process.env.DSH_HOME = SANDBOX_HOME;
+process.env.DSH_ASTOCK_LEGACY_DIR = join(SANDBOX_HOME, 'no-such-legacy-dir');
+
 /** 造一个最小可用的 cordis ctx。 */
 function fakeCtx({ schedule } = {}) {
   const registered = new Map();

@@ -1,11 +1,18 @@
-# dsh-astock —— Cordis 装配补丁。
+# dsh-astock —— Cordis **bundle patch**（随包发布，由 DSH 在安装后自动应用）。
+#
+# ⚠️ 不要把本文件复制进 ~/.dsh/profiles/<name>/cordis.patch.yml：
+#    那是 profile 的用户覆盖层。手贴会把同一条 insert 再插一遍；更糟的是
+#    包里没有这个模块时，冷启动会留下解析不到的装配行而失败，桌面版恢复
+#    会把你的 cordis.patch.yml 改名成 .bak-<时间戳>（看起来像配置被清空）。
+#    安装请用 README 里的 `dsh plugin --profile desktop add link:<本仓库>`。
 #
 # 装到 DSH profile 后，本文件把插件插进 cordis 树。`name` 必须与 package.json
 # 的 name 一致（含 scope），否则装上去了也不会被装配。
-#
-# **首选在「设置 → 插件 → A股助手」里改这些值**（那里是按 lib/config-schema.js
-# 自动生成的中文表单，写入也落到本文件）。下面的 config 是等价的直接写法，
-# 适合批量/版本化配置。所有键都可选——不写就用上游 astock-plugin 的默认值。
+
+# **首选在「设置 → 插件 → A股助手」里改这些值**（表单按 lib/config-schema.js
+# 生成，写入 profile 的 cordis.patch.yml，不是本 bundle 文件）。下面示例里的
+# config 是等价的覆盖写法，同样应放在 profile 的 patch 层。所有键都可选——
+# 不写就用上游 astock-plugin 的默认值。
 #
 # 台账与费用
 #   ledgerPath            台账文件路径，默认 ~/.dsh/astock-data/ledger.sqlite

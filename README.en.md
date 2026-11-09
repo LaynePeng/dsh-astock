@@ -66,13 +66,37 @@ All tools **only read public market data and only write a local SQLite ledger**.
 
 ## Install
 
-Requires **Node.js 22.5+** (built into DSH; zero third-party dependencies, no `npm install`) and **pnpm**.
+### Know which package this is (important)
+
+This project is **`@laynepeng/dsh-astock`**. It is **not published on npm**, so it can only be installed from this checkout with `link:`.
+
+> **Do not** search the plugin market for `dsh-astock`: the npm package [`dsh-astock`](https://www.npmjs.com/package/dsh-astock) is a **different author's** A-share/HK quant workbench. Installing it and then pasting this repository's `cordis.patch.yml` into your profile leaves an insert row for a module that is not installed. On a cold boot that can fail the host; the Desktop recovery dialog then renames your `cordis.patch.yml` to `cordis.patch.yml.bak-<epoch>` and writes an `[]` stub — which looks as if your entire config was deleted. Recovery is below.
+
+### Requirements
+
+- DSH already running (Desktop or `dsh web`)
+- **Node.js 22.13+** (no third-party dependencies, no `npm install`; `node:sqlite` no longer needs a flag on 22.13+). DSH bundles Node, so usually nothing extra is needed
+- **pnpm** (DSH's plugin manager uses it). If missing, run `corepack enable` or `npm i -g pnpm`, then open a new terminal and check `pnpm -v`
+
+### Install
+
+From **this checkout**:
 
 ```sh
-dsh plugin --profile desktop add link:C:/codes/dsh-astock-plugin
+dsh plugin --profile desktop add link:/absolute/path/to/dsh-astock
+# Windows: dsh plugin --profile desktop add link:C:/codes/dsh-astock
 ```
 
-Use `link:` rather than `file:` — the former symlinks, so source edits apply immediately; the latter copies.
+Desktop uses the `desktop` profile; `--profile web` installs into a different profile and nothing shows up in the UI. Use `link:` rather than `file:`: the former symlinks, so source edits apply immediately; the latter copies.
+
+Confirm the package is this project (it must print `@laynepeng/dsh-astock 0.8.2`):
+
+```sh
+node -e "const p=require(process.argv[1]); console.log(p.name, p.version)" \
+  ~/.dsh/profiles/desktop/node_modules/@laynepeng/dsh-astock/package.json
+```
+
+On Windows (cmd) use `%USERPROFILE%\.dsh`; PowerShell uses `$env:USERPROFILE\.dsh`. If that directory is absent, you installed something else (for example the npm `dsh-astock`); remove it and use the `link:` command above.
 
 **Restart DSH afterwards.** DSH locks the plugin module set at startup; nothing changes until you restart, then hard-refresh the page and open a new session.
 
@@ -82,9 +106,46 @@ Verify:
 http://127.0.0.1:<your-dsh-port>/api/dsh-astock/info
 ```
 
-Expect `"version": "0.8.1"`, `"tools": 19`, `"configSchema": true`, `"settingsFields": 45`.
+Expect `"version": "0.8.2"`, `"tools": 19`, `"configSchema": true`, `"settingsFields": 45`.
 
-Uninstall: `dsh plugin --profile desktop remove dsh-astock`.
+### It broke: config looks wiped / DSH will not start
+
+The plugin did **not** delete your config. When the host fails to boot, the Desktop recovery dialog offers "disable third-party plugins"; choosing it runs DSH's `sanitizeProfile`, which **renames** `profiles/<name>/cordis.patch.yml` to `cordis.patch.yml.bak-<epoch ms>`, writes an `[]` stub and restores the official bundle list. The original file is still there — only its name changed.
+
+**Do not** delete `~/.dsh`, the profile directory, or `node_modules`. Instead:
+
+1. **Quit DSH completely** (close the Desktop window; `Ctrl+C` for the CLI), so no live instance writes back.
+2. From this checkout, run the read-only diagnosis (defaults to `~/.dsh` and the `desktop` profile):
+
+   ```sh
+   node scripts/recover.mjs --profile desktop
+   ```
+
+   It lists `.bak-*` backups, the live patch, and any **bundle / insert rows that cannot resolve** (the most common boot failure). Use `--home <path>` if `DSH_HOME` is custom, and `--profile <name>` for another profile.
+3. Restore the newest backup **that has content** (the live file is renamed to `.bak-<now>` first; the script never deletes anything, and empty stubs are skipped):
+
+   ```sh
+   node scripts/recover.mjs --profile desktop --restore newest
+   ```
+4. Verify composition, then start:
+
+   ```sh
+   dsh --profile desktop --dump-default-config   # bundle layers only
+   dsh --profile desktop --dump-config            # plus profile and home user layers
+   dsh --profile desktop
+   ```
+
+   The first passing and the second failing means the bad row is in a **user layer** (`profiles/desktop/cordis.patch.yml` or `~/.dsh/cordis.patch.yml`). Both failing means the bundle or package itself.
+5. If the diagnosis reports an insert row for an uninstalled package (for example `name: '@laynepeng/dsh-astock'`):
+   - reinstall the package (`dsh plugin --profile desktop add link:/absolute/path/to/dsh-astock`), **or**
+   - delete only that row from the profile's `cordis.patch.yml`;
+   - **never** paste this repository's whole `cordis.patch.yml` into the profile patch — it is a bundle patch and DSH applies it automatically once the package is installed.
+
+> **Windows**: replace `~/.dsh` with `%USERPROFILE%\.dsh` (PowerShell: `$env:USERPROFILE\.dsh`), or `%DSH_HOME%` when set. Backup names are the same `cordis.patch.yml.bak-<epoch ms>`.
+>
+> Desktop crash reports live in `~/Library/Logs/DeepSeek Harness/` (Windows: `%APPDATA%\DeepSeek Harness\logs`). Keep the report before choosing recovery; the first `Error` in it is the root cause.
+
+Uninstall: `dsh plugin --profile desktop remove @laynepeng/dsh-astock`.
 
 ---
 
@@ -153,7 +214,7 @@ DSH tool call ──► lib/plugin.js (19 tools + panel/download endpoints + hos
 browser ──► lib/client.js (sidebar panel) ──► /api/dsh-astock/panel
 ```
 
-Earlier versions ran the upstream Python implementation in a subprocess. The whole surface — 19 tools, the panel, maintenance actions and mail checks — now runs in-process: behaviour was ported line by line against the old output (173 tests, including parity cases), and the ledger SQLite schema is unchanged, so **existing ledgers keep working after the upgrade**.
+Earlier versions ran the upstream Python implementation in a subprocess. The whole surface — 19 tools, the panel, maintenance actions and mail checks — now runs in-process: behaviour was ported line by line against the old output (184 offline tests, including parity cases), and the ledger SQLite schema is unchanged, so **existing ledgers keep working after the upgrade**.
 
 ---
 

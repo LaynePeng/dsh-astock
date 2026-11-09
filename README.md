@@ -127,24 +127,39 @@
 
 ## 怎么装
 
+### ⚠️ 先确认包名：本项目不是 npm 上的 `dsh-astock`
+
+本项目的包名是 **`@laynepeng/dsh-astock`**，目前**没有发布到 npm**，只能用本地仓库 / `link:` 安装。
+
+> **不要**在「设置 → 插件」或插件市场里按 `dsh-astock` 搜索安装：npm 上的 [`dsh-astock`](https://www.npmjs.com/package/dsh-astock) 是**另一位作者**的「A股港股量化工作台」，和本插件不是同一个包。
+>
+> 装错包、再把本项目的 `cordis.patch.yml` 贴进 profile，冷启动会插入一条 `name: '@laynepeng/dsh-astock'`、但 profile 里根本没有这个模块的装配行。DSH 桌面版会弹「启动失败」，点「停用第三方插件」后它把你的 `cordis.patch.yml` **改名**成 `cordis.patch.yml.bak-<时间戳>` 再写一个 `[]` 占位——看起来就像「整个配置被清空」。原配置没丢，恢复方法见下面「装坏了」。
+
 ### 准备
 
 - **DSH** 已在用（桌面版或 `dsh web` 均可）
-- **Node.js 22.5+**（插件已全量用 JS 实现，**零第三方依赖**，不需要 `npm install`；`node:sqlite` 从 22.5 起可用）。DSH 自带 Node，一般无需另装
+- **Node.js 22.13+**（插件零第三方依赖，不需要 `npm install`；`node:sqlite` 从 22.13 起无需额外 flag）。DSH 自带 Node，一般无需另装
 - **pnpm**（DSH 管理插件要用它）。没有就 `corepack enable` 或 `npm i -g pnpm`，然后**新开一个终端**再确认 `pnpm -v`
 
 ### 装
 
-**桌面版（推荐）**：打开 **设置 → 插件**，在搜索框里装 `dsh-astock`。
-注意桌面版用的是 `desktop` profile，命令行里的 `--profile web` 装进去的是另一个 profile，界面上不会出现。
-
-**命令行**（在插件目录所在位置执行）：
+**桌面版（推荐）**，在**本仓库目录**执行：
 
 ```sh
-dsh plugin --profile desktop add link:C:/codes/dsh-astock-plugin
+dsh plugin --profile desktop add link:/绝对路径/to/dsh-astock
+# Windows 示例：dsh plugin --profile desktop add link:C:/codes/dsh-astock
 ```
 
-`link:` 而不是 `file:`：前者在 `node_modules` 里是软链，改了源码立刻生效；后者是复制，改完要重装。
+注意桌面版用的是 `desktop` profile，命令行里的 `--profile web` 装进去的是另一个 profile，界面上不会出现。`link:` 而不是 `file:`：前者在 `node_modules` 里是软链，改了源码立刻生效；后者是复制，改完要重装。
+
+装完先确认装的是本项目（输出应是 `@laynepeng/dsh-astock 0.8.2`）：
+
+```sh
+node -e "const p=require(process.argv[1]); console.log(p.name, p.version)" \
+  ~/.dsh/profiles/desktop/node_modules/@laynepeng/dsh-astock/package.json
+```
+
+Windows（cmd）：把 `~/.dsh` 换成 `%USERPROFILE%\.dsh`；PowerShell 用 `$env:USERPROFILE\.dsh`。没有这个目录，就说明装的是别的包（例如 npm 上的 `dsh-astock`），先 `remove` 再按上面的 `link:` 装。
 
 ### 装完必须重启（这一步别跳）
 
@@ -163,16 +178,65 @@ DSH 启动时就锁定了插件模块集合，**不重启，界面上什么都�
 http://127.0.0.1:2328/api/dsh-astock/info
 ```
 
-期望看到 `"version": "0.8.1"`、`"tools": 19`、`"configSchema": true`、`"settingsFields": 45`。
+期望看到 `"version": "0.8.2"`、`"tools": 19`、`"configSchema": true`、`"settingsFields": 45`。
 
 再到对话里说一句「查一下 600000 的行情」——能返回真实价格就成功了。
 
-在界面上：右栏 `+` 里应该能找到「A股助手」；打开 **A股 → 配置**，能看到邮件向导四步 + 「其他配置」六组，页面底部版本脚注是 `v0.8.1`（**版本号对不上＝宿主还在跑旧代码**）。
+在界面上：右栏 `+` 里应该能找到「A股助手」；打开 **A股 → 配置**，能看到邮件向导四步 + 「其他配置」六组，页面底部版本脚注是 `v0.8.2`（**版本号对不上＝宿主还在跑旧代码**）。
+
+### 装坏了：配置看起来被清空 / DSH 起不来
+
+先说明责任边界：**这不是插件在删你的配置**。桌面版在宿主启动失败时弹出的恢复对话框里，如果你点了「停用第三方插件」，DSH 会执行 `sanitizeProfile`：把 `profiles/<name>/cordis.patch.yml` **改名**成 `cordis.patch.yml.bak-<毫秒时间戳>`，写一个 `[]` 占位，并把 bundle 列表恢复成官方默认。原文件还在，只是名字变了。
+
+**不要**因此删掉整个 `~/.dsh`、profile 目录或 `node_modules`。按下面顺序来：
+
+1. **完全退出 DSH**（桌面版关窗口；命令行 `Ctrl+C`），别让运行中的实例再写回磁盘。
+2. 在本仓库目录跑只读诊断（默认 `~/.dsh`、`desktop` profile）：
+
+   ```sh
+   node scripts/recover.mjs --profile desktop
+   ```
+
+   输出会列出 `.bak-*` 备份、当前 patch 的行数，以及**解析不到的 bundle / insert 行**（最常见的启动失败原因）。自定义过 `DSH_HOME` 的加 `--home /你的/路径`；profile 不是 desktop 的用 `--profile <名字>`。
+
+3. 把最新一份**有内容**的备份放回去（脚本会先把当前文件改名成 `.bak-<现在>`，不删除任何东西；空占位会被跳过）：
+
+   ```sh
+   node scripts/recover.mjs --profile desktop --restore newest
+   ```
+
+4. 验证配置能组合、再启动：
+
+   ```sh
+   dsh --profile desktop --dump-default-config   # 只组合 bundle，不含用户层
+   dsh --profile desktop --dump-config            # 含 profile 与 home 用户层
+   dsh --profile desktop
+   ```
+
+   第一条能过、第二条不过 → 坏行在**用户层**（`profiles/desktop/cordis.patch.yml` 或 `~/.dsh/cordis.patch.yml`）。两条都不过 → 坏在 bundle / 包本身。
+
+5. 如果诊断说某条 insert 行指向未安装的包（例如 `name: '@laynepeng/dsh-astock'`）：
+   - 要么先把包装回来：`dsh plugin --profile desktop add link:/绝对路径/to/dsh-astock`；
+   - 要么从 profile 的 `cordis.patch.yml` 里**只删掉那一行**；
+   - **不要**把本仓库的 `cordis.patch.yml` 整份贴进 profile 的 `cordis.patch.yml`——它是 bundle patch，装了包之后 DSH 会自动应用，手贴等于重复插入。
+
+> **Windows**：上面所有 `~/.dsh` 都换成 `%USERPROFILE%\.dsh`（PowerShell 用 `$env:USERPROFILE\.dsh`）；如果设过 `DSH_HOME`，用 `%DSH_HOME%`。备份文件名同样是 `cordis.patch.yml.bak-<毫秒时间戳>`。
+>
+> PowerShell 里先看一眼备份与崩溃报告：
+>
+> ```powershell
+> Get-ChildItem "$env:USERPROFILE\.dsh\profiles\desktop\cordis.patch.yml.bak-*" |
+>   Sort-Object Name -Descending | Select-Object Name, Length
+> Get-ChildItem "$env:APPDATA\DeepSeek Harness\logs\crash-*.log" |
+>   Sort-Object LastWriteTime -Descending | Select-Object -First 3 Name, LastWriteTime
+> ```
+>
+> 桌面版的诊断报告在 `~/Library/Logs/DeepSeek Harness/`（Windows 在 `%APPDATA%\DeepSeek Harness\logs`）。启动失败时先留报告，再点恢复；报告里第一处 `Error` 就是根因。
 
 ### 不想要了
 
 ```sh
-dsh plugin --profile desktop remove dsh-astock
+dsh plugin --profile desktop remove @laynepeng/dsh-astock
 ```
 
 重启后彻底干净。台账文件（默认 `~/.dsh/astock-data/ledger.sqlite`）不会被删，想清掉自己删。
@@ -183,7 +247,7 @@ dsh plugin --profile desktop remove dsh-astock
 
 **右栏「A股 → 配置」是唯一入口**：上半部分是邮件**向导**（四步点完就能发信），下半部分是「其他配置」六组，保存即生效。
 
-> **为什么不用宿主配置页**：DSH 0.2.2 的「插件 → 已安装插件 → dsh-astock」对第三方 bundle **不一定渲染配置表单**（很多人看到的就是「根本没有配置」）。所以插件自带这页自绘表单，45 项全在这里，不依赖宿主。
+> **为什么不用宿主配置页**：DSH 0.2.2 的「插件 → 已安装插件 → @laynepeng/dsh-astock」对第三方 bundle **不一定渲染配置表单**（很多人看到的就是「根本没有配置」）。所以插件自带这页自绘表单，45 项全在这里，不依赖宿主。
 
 向导流程：
 
@@ -207,7 +271,9 @@ dsh plugin --profile desktop remove dsh-astock
 
 > 有两项改完需要额外动作：「每日 15:05 自动存档」要重启 DSH，「盯盘间隔」要重新「启动盯盘」——字段提示里也写了。
 
-> 台账默认放 `~/.dsh/astock-data/ledger.sqlite`。首次启动时如果发现旧版数据目录 `~/.lite-work/astock-data`，会**一次性搬过来**（台账、存档、净值、回测、备份一起），之后不再读那个目录。
+> 台账默认放 `~/.dsh/astock-data/ledger.sqlite`，存档跟着台账同目录。**只有在用默认位置时**，首次启动才会发现旧版数据目录 `~/.lite-work/astock-data` 并**一次性搬过来**（台账、存档、净值、回测、备份一起），之后不再读那个目录；你自己配了 `ledgerPath` 的话不会往里灌旧数据。
+>
+> 0.8.2 起存档跟着台账走（之前写死在 `~/.dsh/astock-data/`，与文档不符）。如果你早就把台账指到别的目录，插件会把旧位置的 `archive.sqlite` **复制**一份到台账目录（原文件保留），不会丢历史。
 
 ---
 
@@ -310,6 +376,9 @@ Microsoft 已对个人账号关闭 SMTP Basic Auth，应用专用密码也会被
 
 ## 常见问题
 
+**装完 DSH 起不来 / 配置看起来被清空？**
+先别删 `~/.dsh`。桌面版启动失败对话框里的「停用第三方插件」会把 `profiles/desktop/cordis.patch.yml` 改名成 `cordis.patch.yml.bak-<时间戳>`，原配置还在。按上面「装坏了：配置看起来被清空 / DSH 起不来」一节，用 `node scripts/recover.mjs --profile desktop` 诊断、`--restore newest` 找回；不要整目录删除。
+
 **装完右栏没有 A股 标签？**
 先确认重启过 DSH 并刷新了页面。右栏 tab 条**末尾的 `+`** 才是入口，不是右上角的齿轮。
 
@@ -337,7 +406,7 @@ http://127.0.0.1:<你的端口>/api/dsh-astock/info
 不用。插件自带 SMTP 客户端（`lib/js/smtp.js`，只用 `node:net` / `node:tls`）与 **Outlook 设备码 OAuth2**（`lib/js/oauth.js`）：SMTP 授权码与 XOAUTH2 两条路都能走。
 
 **找不到插件配置页 / 设置里没有 A股助手？**
-直接看 **右栏 A股 → 配置**——邮件向导、OAuth、盘后复盘都在那里，插件自己存 `settings.json`，不依赖宿主是否渲染配置表单。宿主那边（侧栏「插件」→ 已安装插件 → dsh-astock）在 DSH 0.2.2 对第三方 bundle 可能根本不显示配置项，这不是故障。要排查表单注册情况，打开 `/api/dsh-astock/info` 看 `configSchema` 与 `settingsError`。
+直接看 **右栏 A股 → 配置**——邮件向导、OAuth、盘后复盘都在那里，插件自己存 `settings.json`，不依赖宿主是否渲染配置表单。宿主那边（侧栏「插件」→ 已安装插件 → @laynepeng/dsh-astock）在 DSH 0.2.2 对第三方 bundle 可能根本不显示配置项，这不是故障。要排查表单注册情况，打开 `/api/dsh-astock/info` 看 `configSchema` 与 `settingsError`。
 
 **Outlook / Microsoft 365 邮箱能发吗？**
 - **推荐走 OAuth2**：右栏 **A股 → 配置 → 第 2 步「账号」认证方式选 OAuth2（Outlook）** → 点「开始授权」→ 浏览器输入面板上的代码 → 回来点「我已完成授权」。不需要注册 Azure 应用（内置公共客户端），也不需要应用专用密码。服务器会自动用 `smtp-mail.outlook.com:587`（STARTTLS）。
@@ -348,6 +417,8 @@ http://127.0.0.1:<你的端口>/api/dsh-astock/info
 
 **数据存在哪？换机器怎么迁移？**
 默认都在 `~/.dsh/astock-data/`：台账 `ledger.sqlite`、存档 `archive.sqlite`、收盘净值 `equity.jsonl`、备份 `backups/`。换机器时把整个目录拷过去即可；也可以在 **维护 → 导出/备份** 里下载 JSON/CSV，或做一份 SQLite 备份。
+
+如果你改过 `ledgerPath`，除 `settings.json` / `oauth.json` / `watch-plan.json` 本来就跟台账同目录外，**存档、净值、回测、备份也都跟着台账目录走**（0.8.2 起）。
 
 **盘后报告没生成？**
 先看 **维护 → 自动化**：显示「未创建」就点「启用盘后报告」。显示时间却没收到，确认当天是交易日、且 DSH 在 15:05 之后运行过（应用退出/休眠期间不会补跑定时任务）。盘后报告每天调用一次模型，不想花 token 就停用。
@@ -380,9 +451,9 @@ DSH 工具调用 ──► lib/plugin.js（注册 19 个工具 + 面板端点 + 
 浏览器 ──► lib/client.js（右栏「A股」React 面板）──► /api/dsh-astock/panel
 ```
 
-**为什么全量重写成 Node 而不是继续跑 Python 子进程**：早期版本直接跑上游的 Python 原实现，代价是用户机器必须装 Python，且每次工具调用都要起一个子进程（Windows 上还要处理编码与路径）。现在 19 个工具、面板、维护动作、邮件判定都在宿主进程内跑：口径逐条对齐原实现（有 173 条测试兜底，含与旧输出的对照），台账 SQLite 表结构一字未改，所以**升级后老台账直接可用**。
+**为什么全量重写成 Node 而不是继续跑 Python 子进程**：早期版本直接跑上游的 Python 原实现，代价是用户机器必须装 Python，且每次工具调用都要起一个子进程（Windows 上还要处理编码与路径）。现在 19 个工具、面板、维护动作、邮件判定都在宿主进程内跑：口径逐条对齐原实现（有 184 条离线测试兜底，含与旧输出的对照），台账 SQLite 表结构一字未改，所以**升级后老台账直接可用**。
 
-**安全边界**：工具白名单固定（没有执行任意命令的入口），网络只去公开行情/数据源，写盘只写台账 SQLite 与配置。
+**安全边界**：工具白名单固定（没有执行任意命令的入口），网络只去公开行情/数据源；写盘只落在 `~/.dsh/astock-data/`（台账、存档、`settings.json`、`oauth.json`），**不读写 DSH 的 profile 配置或 `cordis.patch.yml`**。
 
 ---
 
