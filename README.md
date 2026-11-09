@@ -205,6 +205,18 @@ http://127.0.0.1:2328/api/dsh-astock/info
    node scripts/recover.mjs --profile desktop --restore newest
    ```
 
+   没有仓库、或不想跑 Node 脚本的 Windows 用户，可以直接用 PowerShell（效果一样，只复制不删除）：
+
+   ```powershell
+   $p = "$env:USERPROFILE\.dsh\profiles\desktop"
+   $bak = Get-ChildItem "$p\cordis.patch.yml.bak-*" |
+     Where-Object { $_.Length -gt 64 } | Sort-Object Name -Descending | Select-Object -First 1
+   Copy-Item "$p\cordis.patch.yml" "$p\cordis.patch.yml.bak-$(Get-Date -Format yyyyMMddHHmmss)"
+   Copy-Item $bak.FullName "$p\cordis.patch.yml"
+   ```
+
+   home 层（`%USERPROFILE%\.dsh\cordis.patch.yml`，影响所有 profile）同样查一遍 `.bak-*`。
+
 4. 验证配置能组合、再启动：
 
    ```sh
