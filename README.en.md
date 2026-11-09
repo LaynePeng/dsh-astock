@@ -34,7 +34,7 @@ It has **no order channel** — no placing, no cancelling, no broker login. You 
 dsh plugin --profile desktop add github:LaynePeng/dsh-astock
 ```
 
-Fully quit and reopen DSH, then pick **A股助手** from the `+` at the end of the right sidebar tab strip. The npm package is not published yet — see [RELEASE.md](RELEASE.md).
+Fully quit and reopen DSH, then pick **A股助手** from the `+` at the end of the right sidebar tab strip. The npm package is not published yet — see [docs/PUBLISHING.md](docs/PUBLISHING.md).
 
 > macOS and Windows. QQ / 163 mailboxes use an app password; Outlook / Hotmail use OAuth2 with a built-in public client (no Azure registration needed).
 
@@ -309,6 +309,6 @@ The A-share data plumbing and the calculation rules come from the open-source up
 - Upstream A-share logic: [LaynePeng/lite-work-plugins](https://github.com/LaynePeng/lite-work-plugins)
 - DSH: [deepseek-ai/deepseek-harness](https://github.com/deepseek-ai/deepseek-harness)
 - Roadmap: [ROADMAP.md](ROADMAP.md)
-- Python-removal rewrite log (complete): [REWRITE.md](REWRITE.md)
+- Publishing & listing: [docs/PUBLISHING.md](docs/PUBLISHING.md)
 
 License: Apache-2.0

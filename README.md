@@ -36,7 +36,7 @@
 dsh plugin --profile desktop add github:LaynePeng/dsh-astock
 ```
 
-装完**完全退出 DSH 再打开**，右栏 `+` 里选「A股助手」。npm 包尚未发布，原因与进度见 [RELEASE.md](RELEASE.md)。
+装完**完全退出 DSH 再打开**，右栏 `+` 里选「A股助手」。npm 包尚未发布，原因与进度见 [docs/PUBLISHING.md](docs/PUBLISHING.md)。
 
 > 支持 macOS / Windows；QQ / 163 邮箱用授权码发提醒，Outlook / Hotmail 用 OAuth2（内置公共客户端，不用注册 Azure）。
 
@@ -582,7 +582,7 @@ A 股取数与算账口径来自上游开源项目 [lite-work-plugins](https://g
 - 上游 A 股逻辑：[LaynePeng/lite-work-plugins](https://github.com/LaynePeng/lite-work-plugins)
 - DSH：[deepseek-ai/deepseek-harness](https://github.com/deepseek-ai/deepseek-harness)
 - 后续计划：[ROADMAP.md](ROADMAP.md)
-- 去 Python 化重写记录（已全部完成）：[REWRITE.md](REWRITE.md)
+- 发布与收录：[docs/PUBLISHING.md](docs/PUBLISHING.md)
 
 License: Apache-2.0
 

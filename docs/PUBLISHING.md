@@ -143,4 +143,4 @@ npm 的规则（官方文档原文）：
 3. 工单里填你的邮箱，**How can we help?** 选 **Reset my email**，说明：用户名 `laynepeng`、注册的大致时间、注册时把邮箱写错了、从未收到验证邮件、希望改成哪个邮箱。
 4. 提交后等 npm 支持处理；处理完用新邮箱收 OTP 登录，再到 Account Settings 确认 `email (verified)`。
 
-**在修好之前**：不要为了发 npm 而新建第二个账号——`@laynepeng` scope 只有这个账号能用，换账号意味着包名要一起改（`package.json`、`cordis.patch.yml`、两份 README、本文件、`release/` 下的 PR 材料）。收录 PR 已经能用 `github:LaynePeng/dsh-astock` 安装，npm 不是阻塞项。
+**在修好之前**：不要为了发 npm 而新建第二个账号——`@laynepeng` scope 只有这个账号能用，换账号意味着包名要一起改（`package.json`、`cordis.patch.yml`、两份 README、本文件）。收录 PR 已经能用 `github:LaynePeng/dsh-astock` 安装，npm 不是阻塞项。
