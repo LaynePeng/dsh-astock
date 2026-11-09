@@ -152,7 +152,7 @@ dsh plugin --profile desktop add link:/绝对路径/to/dsh-astock
 
 注意桌面版用的是 `desktop` profile，命令行里的 `--profile web` 装进去的是另一个 profile，界面上不会出现。`link:` 而不是 `file:`：前者在 `node_modules` 里是软链，改了源码立刻生效；后者是复制，改完要重装。
 
-装完先确认装的是本项目（输出应是 `@laynepeng/dsh-astock 0.8.6`）：
+装完先确认装的是本项目（输出应是 `@laynepeng/dsh-astock 0.8.7`）：
 
 ```sh
 node -e "const p=require(process.argv[1]); console.log(p.name, p.version)" \
@@ -178,11 +178,11 @@ DSH 启动时就锁定了插件模块集合，**不重启，界面上什么都�
 http://127.0.0.1:2328/api/dsh-astock/info
 ```
 
-期望看到 `"version": "0.8.6"`、`"tools": 19`、`"configSchema": true`、`"settingsFields": 45`。
+期望看到 `"version": "0.8.7"`、`"tools": 19`、`"configSchema": true`、`"settingsFields": 45`。
 
 再到对话里说一句「查一下 600000 的行情」——能返回真实价格就成功了。
 
-在界面上：右栏 `+` 里应该能找到「A股助手」；打开 **A股 → 配置**，能看到邮件向导四步 + 「其他配置」六组，页面底部版本脚注是 `v0.8.6`（**版本号对不上＝宿主还在跑旧代码**）。
+在界面上：右栏 `+` 里应该能找到「A股助手」；打开 **A股 → 配置**，能看到邮件向导四步 + 「其他配置」六组，页面底部版本脚注是 `v0.8.7`（**版本号对不上＝宿主还在跑旧代码**）。
 
 ### 装坏了：配置看起来被清空 / DSH 起不来
 
@@ -247,7 +247,7 @@ http://127.0.0.1:2328/api/dsh-astock/info
 
 **已知故障：启动报 `duplicate factory registration for "dsh-astock"`**
 
-0.8.2 及以前，`lib/client.js` 里模块 id 写成了 `dsh-astock`，而包名是 `@laynepeng/dsh-astock`。DSH 的 client-modules 用**包名**作模块 id：找不到就回退到单包 URL 再执行一次，第二次注册直接抛这个错，web boot 判定 `@laynepeng/dsh-astock: import failed`。0.8.3 已修正（id 改成 `@laynepeng/dsh-astock`；0.8.6 也包含该修复）。升级后如仍报错，说明宿主还在跑旧文件：删掉 `node_modules/@laynepeng/dsh-astock` 重装，或重启 DSH。
+0.8.2 及以前，`lib/client.js` 里模块 id 写成了 `dsh-astock`，而包名是 `@laynepeng/dsh-astock`。DSH 的 client-modules 用**包名**作模块 id：找不到就回退到单包 URL 再执行一次，第二次注册直接抛这个错，web boot 判定 `@laynepeng/dsh-astock: import failed`。0.8.3 已修正（id 改成 `@laynepeng/dsh-astock`；0.8.7 也包含该修复）。升级后如仍报错，说明宿主还在跑旧文件：删掉 `node_modules/@laynepeng/dsh-astock` 重装，或重启 DSH。
 
 ### 不想要了
 
@@ -349,6 +349,19 @@ Microsoft 已对个人账号关闭 SMTP Basic Auth，应用专用密码也会被
 **流水与事件单都分页**：最近流水每页 20 笔、待触发事件单每页 8 张，底部有「第 X / Y 页 · 共 N 条」和上一页/下一页；页码越界会自动夹到最后一页，数据再多也不会把面板撑爆。
 
 **事件单（券商条件单）格式**：`astock_hint` 与 `astock_act` 现在直接给出券商 App「条件单 / 智能单」的填写字段——触发条件（最新价 ≤ / ≥）、委托方向、数量、限价、有效期，一张单只表达一个触发条件（止损一张、止盈一张、跟踪回撤一张），照抄即可，不用自己换算。
+
+---
+
+## 计划页（右栏 A股 → 计划）
+
+把「插件自己的定时」和「DSH 定时任务」放在一页，避免混淆：
+
+| 区块 | 内容 | 能做什么 |
+|---|---|---|
+| 插件自己的定时 | 每日 15:05 存档 + 收盘净值、邮件探测 | 看上次执行/结果/净值；**立即更新存档**；发测试邮件 |
+| DSH 定时任务 | 盯盘、盘后报告 | 看状态/任务 id/下次运行/频率；一键启动/停止、启用/停用 |
+
+区别：每日存档和邮件探测是插件内部的 timer，**不在**左栏「自动化任务」里；盯盘和盘后报告走 DSH 定时服务，左栏时钟图标里也能看到全部任务。
 
 ---
 
@@ -489,7 +502,7 @@ DSH 工具调用 ──► lib/plugin.js（注册 19 个工具 + 面板端点 + 
 
 A 股取数与算账口径来自上游开源项目 [lite-work-plugins](https://github.com/LaynePeng/lite-work-plugins) 的 `astock-plugin`（Apache-2.0）：19 个工具同名、同 schema、同输出文案，台账与存档沿用同一路径同一格式（可共用）。DSH 侧缺的东西按 DSH 的方式补：
 
-- **界面**：上游是 Markdown 富围栏（只读），这里是真实 React 面板（持仓 / 交易 / 选股 / 维护 / 配置五个页签），卡片按钮可点击追问
+- **界面**：上游是 Markdown 富围栏（只读），这里是真实 React 面板（持仓 / 交易 / 选股 / 计划 / 维护 / 配置六个页签），卡片按钮可点击追问
 - **新增**：每日 15:05 存档 + 收盘净值曲线、盘后复盘邮件、台账/自选/盯盘规则导入导出、全量 JSON 恢复、自带 SMTP 与 Outlook OAuth2
 - **差异**：盯盘由「探针唤醒」改为 DSH 定时任务，每轮调用模型（故间隔放宽到 15 分钟）；「立即选股/回测/更新存档」等按钮从设置页移到「维护」页
 

@@ -865,3 +865,76 @@ test('交易面板：流水与事件单都按服务端分页返回', async () =>
   assert.equal(plansSecond.body.plans.length, 2);
   assert.equal(plansSecond.body.plansPage.page, 2);
 });
+
+test('计划页：插件内部定时与 DSH 定时任务分开显示，且能一键启停盯盘', async () => {
+  const ledger = join(mkdtempSync(join(tmpdir(), 'dsh-astock-auto-')), 'ledger.sqlite');
+  const tasks = [];
+  const schedule = {
+    async create(spec) {
+      const task = {
+        id: 'sched-' + (tasks.length + 1),
+        title: spec.title,
+        prompt: spec.prompt,
+        status: 'active',
+        active: true,
+        scheduledAtLocal: '2026-11-10T09:00:00+08:00',
+      };
+      tasks.push(task);
+      return task;
+    },
+    async list() {
+      return { items: tasks.slice() };
+    },
+    async edit({ id, action, patch }) {
+      const index = tasks.findIndex((t) => t.id === id);
+      if (index < 0) return null;
+      if (action === 'delete') return tasks.splice(index, 1)[0];
+      Object.assign(tasks[index], patch || {});
+      return tasks[index];
+    },
+  };
+  const { ctx, routes } = fakeCtx({ schedule });
+  apply(ctx, { ledgerPath: ledger, workspace: '/tmp' });
+  const route = routes.find((r) => r.path === '/api/dsh-astock/panel');
+
+  const before = await callRoute(route, '/api/dsh-astock/panel?panel=auto');
+  assert.equal(before.body.view, 'auto');
+  assert.equal(before.body.scheduleAvailable, true);
+  assert.equal(before.body.watch.running, false);
+  assert.equal(before.body.report.running, false);
+  assert.equal(before.body.archive.enabled, true);
+  assert.equal(before.body.mail.intervalSeconds, 300);
+
+  const started = await postRoute(route, { op: 'watch_start' });
+  assert.equal(started.body.ok, true);
+  assert.equal(started.body.created, true);
+  assert.equal(tasks.length, 1);
+  assert.match(tasks[0].title, /A股盯盘/);
+  assert.ok(String(tasks[0].prompt).includes('astock_hint'));
+
+  const running = await callRoute(route, '/api/dsh-astock/panel?panel=auto');
+  assert.equal(running.body.watch.running, true);
+  assert.equal(running.body.watch.taskId, tasks[0].id);
+  assert.ok(running.body.watch.next.length > 0);
+
+  const stopped = await postRoute(route, { op: 'watch_stop' });
+  assert.equal(stopped.body.ok, true);
+  assert.equal(stopped.body.removed, 1);
+  assert.equal(tasks.length, 0);
+});
+
+test('计划页：宿主没有 schedule 服务时给出可读原因，而不是 500', async () => {
+  const ledger = join(mkdtempSync(join(tmpdir(), 'dsh-astock-auto-')), 'ledger.sqlite');
+  const { ctx, routes } = fakeCtx();
+  apply(ctx, { ledgerPath: ledger });
+  const route = routes.find((r) => r.path === '/api/dsh-astock/panel');
+
+  const view = await callRoute(route, '/api/dsh-astock/panel?panel=auto');
+  assert.equal(view.body.ok, true);
+  assert.equal(view.body.scheduleAvailable, false);
+  assert.equal(view.body.watch.available, false);
+
+  const started = await postRoute(route, { op: 'watch_start' });
+  assert.equal(started.body.ok, false);
+  assert.match(started.body.message, /定时服务|schedule/);
+});
