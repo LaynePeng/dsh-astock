@@ -24,6 +24,12 @@
 - [x] **选股面板持久化**：`pick-cache.json`（10 分钟 TTL、资金变化失效），「刷新」强制重扫
 - [x] 去 Python 化收尾：`python/` 与 `lib/bridge.js` 删除，19 个工具 + 面板 + 维护 + 邮件全部 Node 实现
 
+## 0.8.9 已完成
+
+- [x] OAuth 默认租户改为 `common`：个人账号与组织账号都能授权（原 `consumers` 只覆盖个人）
+- [x] 文档补充「其他用户能直接用吗」：内置公共客户端、token 只存本机、企业账号需管理员同意、可填自有客户端 ID 兜底
+- [x] 验证：微软设备码端点对 common/consumers/organizations + Graph Mail.Send 均返回 200；现有 refresh_token 在 common 下续期正常
+
 ## 0.8.8 已完成
 
 - [x] Outlook/Hotmail 发信改走 **Microsoft Graph（HTTPS 443）**：部分网络在 SMTP 220 问候后直接断连，SMTP 不可用

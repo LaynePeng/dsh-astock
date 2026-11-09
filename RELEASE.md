@@ -11,7 +11,7 @@
 | 收录 PR | ✅ [awesome-dsh-plugin#13535](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin/pull/13535)（`check` 已过） |
 | 仓库年龄门槛（≥1 天） | ⏳ 门禁只差这一条，约 12 小时后自动通过，无需重新提交 |
 | npm 发布 | ❌ 未发布：`laynepeng` 账号注册时邮箱填错，首次登录要邮箱 OTP，收不到（恢复流程见文末「npm 账号邮箱填错」） |
-| `npm pack` 产物 | ✅ 63 个文件、约 285 KB；已用 tarball 装进干净 profile 实测：`0.8.8 / 19 tools / configSchema=true / 45 字段` |
+| `npm pack` 产物 | ✅ 63 个文件、约 285 KB；已用 tarball 装进干净 profile 实测：`0.8.9 / 19 tools / configSchema=true / 45 字段` |
 
 | 方式 | 别人怎么装 | 能进市场搜索吗 | 成本 |
 |---|---|---|---|
@@ -49,14 +49,14 @@ dsh plugin --profile desktop add @laynepeng/dsh-astock
 ```
 
 > 已实测：把 `npm pack` 出来的 tarball 装进干净 profile，宿主能起来，
-> `/api/dsh-astock/info` 返回 `version=0.8.8 / tools=19 / configSchema=true / settingsFields=45`，
+> `/api/dsh-astock/info` 返回 `version=0.8.9 / tools=19 / configSchema=true / settingsFields=45`，
 > 每日维护也能正常跑。所以 npm 发布后唯一的不确定项只有登录与 2FA。
 
 当前 `npm pack` 会带 63 个文件、约 285 KB（`lib/`、`cordis.patch.yml`、README、LICENSE、`scripts/recover.mjs`），没有 `tests/` 和临时文件。
 
 发布前检查：
 
-- [ ] `package.json` 的 `version` 已递增（当前 `0.8.8`）
+- [ ] `package.json` 的 `version` 已递增（当前 `0.8.9`）
 - [ ] `npm test` 全绿（当前 184/184）
 - [ ] `cordis.patch.yml` 里 insert 的 `name` 与 `package.json` 的 `name` 完全一致
 - [ ] `files` 没漏掉 `lib/`、`cordis.patch.yml`、`scripts/recover.mjs`

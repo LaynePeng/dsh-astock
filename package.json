@@ -1,6 +1,6 @@
 {
   "name": "@laynepeng/dsh-astock",
-  "version": "0.8.8",
+  "version": "0.8.9",
   "description": "A 股助手（DSH 插件）：19 个行情/选股/舆情/回测工具 + 手工交易台账 + 下单提示 + 右栏持仓·选股·维护·配置面板 + 每日自动存档与收盘净值 + 高风险邮件通知。不接任何委托通道，你在券商 App 自己下单。",
   "license": "Apache-2.0",
   "author": "Layne Peng <appamail@hotmail.com>",

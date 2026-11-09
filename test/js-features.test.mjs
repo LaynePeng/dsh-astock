@@ -102,19 +102,19 @@ test('设置：字段表覆盖邮件与盘后报告，且都有中文说明', ()
 
 // ────────────────────────────────────────────── OAuth
 
-test('OAuth：默认用内置公共客户端与 consumers 租户', () => {
+test('OAuth：默认用内置公共客户端与 common 租户（个人/组织都能授权）', () => {
   const cfg = oauth.oauthConfig({});
   assert.equal(cfg.provider, 'outlook');
-  assert.equal(cfg.tenant, 'consumers');
+  assert.equal(cfg.tenant, 'common');
   assert.equal(cfg.clientId, oauth.PUBLIC_CLIENT_IDS.outlook);
-  assert.match(cfg.tokenUrl, /login\.microsoftonline\.com\/consumers\/oauth2\/v2\.0\/token/);
+  assert.match(cfg.tokenUrl, /login\.microsoftonline\.com\/common\/oauth2\/v2\.0\/token/);
   assert.equal(cfg.smtp.host, 'smtp-mail.outlook.com');
   assert.equal(cfg.smtp.port, 587);
 });
 
 test('OAuth：租户填了邮箱会被纠正（避免 AADSTS900023）', () => {
   const cfg = oauth.oauthConfig({ oauth_tenant: 'me@outlook.com' });
-  assert.equal(cfg.tenant, 'consumers');
+  assert.equal(cfg.tenant, 'common');
   assert.equal(cfg.tenantFixed, true);
 });
 
