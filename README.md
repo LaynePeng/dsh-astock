@@ -152,7 +152,7 @@ dsh plugin --profile desktop add link:/绝对路径/to/dsh-astock
 
 注意桌面版用的是 `desktop` profile，命令行里的 `--profile web` 装进去的是另一个 profile，界面上不会出现。`link:` 而不是 `file:`：前者在 `node_modules` 里是软链，改了源码立刻生效；后者是复制，改完要重装。
 
-装完先确认装的是本项目（输出应是 `@laynepeng/dsh-astock 0.8.2`）：
+装完先确认装的是本项目（输出应是 `@laynepeng/dsh-astock 0.8.3`）：
 
 ```sh
 node -e "const p=require(process.argv[1]); console.log(p.name, p.version)" \
@@ -178,11 +178,11 @@ DSH 启动时就锁定了插件模块集合，**不重启，界面上什么都�
 http://127.0.0.1:2328/api/dsh-astock/info
 ```
 
-期望看到 `"version": "0.8.2"`、`"tools": 19`、`"configSchema": true`、`"settingsFields": 45`。
+期望看到 `"version": "0.8.3"`、`"tools": 19`、`"configSchema": true`、`"settingsFields": 45`。
 
 再到对话里说一句「查一下 600000 的行情」——能返回真实价格就成功了。
 
-在界面上：右栏 `+` 里应该能找到「A股助手」；打开 **A股 → 配置**，能看到邮件向导四步 + 「其他配置」六组，页面底部版本脚注是 `v0.8.2`（**版本号对不上＝宿主还在跑旧代码**）。
+在界面上：右栏 `+` 里应该能找到「A股助手」；打开 **A股 → 配置**，能看到邮件向导四步 + 「其他配置」六组，页面底部版本脚注是 `v0.8.3`（**版本号对不上＝宿主还在跑旧代码**）。
 
 ### 装坏了：配置看起来被清空 / DSH 起不来
 
@@ -232,6 +232,10 @@ http://127.0.0.1:2328/api/dsh-astock/info
 > ```
 >
 > 桌面版的诊断报告在 `~/Library/Logs/DeepSeek Harness/`（Windows 在 `%APPDATA%\DeepSeek Harness\logs`）。启动失败时先留报告，再点恢复；报告里第一处 `Error` 就是根因。
+
+**已知故障：启动报 `duplicate factory registration for "dsh-astock"`**
+
+0.8.2 及以前，`lib/client.js` 里模块 id 写成了 `dsh-astock`，而包名是 `@laynepeng/dsh-astock`。DSH 的 client-modules 用**包名**作模块 id：找不到就回退到单包 URL 再执行一次，第二次注册直接抛这个错，web boot 判定 `@laynepeng/dsh-astock: import failed`。0.8.3 已修正（id 改成 `@laynepeng/dsh-astock`）。升级后如仍报错，说明宿主还在跑旧文件：删掉 `node_modules/@laynepeng/dsh-astock` 重装，或重启 DSH。
 
 ### 不想要了
 

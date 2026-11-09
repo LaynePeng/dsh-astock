@@ -18,6 +18,8 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
+/** client 模块 id 必须与 npm 包名完全一致（DSH 用它去 factories 里查）。 */
+const PACKAGE_NAME = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8')).name;
 
 /** 最小的 React 替身：组件在本测试里不会被真正渲染。 */
 const reactStub = {
@@ -69,7 +71,13 @@ export function loadClientBundle() {
     if (previous.document) Object.defineProperty(globalThis, 'document', previous.document);
   }
 
-  const exports = loaded.get('dsh-astock');
-  assert.ok(exports, 'bundle 必须以 id=dsh-astock 调用 __ModuleLoader__.load');
+  // DSH 的 client-modules 用 package.json 的 name 作为模块 id：
+  //   宿主执行 bundle → 到 factories 里找 package name → 找不到就回退到单包 URL
+  //   再执行一次 → 第二次注册抛 "duplicate factory registration" → entry 激活失败。
+  // 所以这里必须校验 id === 包名，而不是只校验“有个 id”。
+  const ids = [...loaded.keys()];
+  assert.deepEqual(ids, [PACKAGE_NAME], `bundle 必须以 id=${PACKAGE_NAME}（package.json name）注册，实际注册了 ${ids.join(', ')}`);
+  const exports = loaded.get(PACKAGE_NAME);
+  assert.ok(exports, 'bundle 必须导出 apply / inject');
   return exports;
 }
