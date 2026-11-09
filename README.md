@@ -152,7 +152,7 @@ dsh plugin --profile desktop add link:/绝对路径/to/dsh-astock
 
 注意桌面版用的是 `desktop` profile，命令行里的 `--profile web` 装进去的是另一个 profile，界面上不会出现。`link:` 而不是 `file:`：前者在 `node_modules` 里是软链，改了源码立刻生效；后者是复制，改完要重装。
 
-装完先确认装的是本项目（输出应是 `@laynepeng/dsh-astock 0.8.7`）：
+装完先确认装的是本项目（输出应是 `@laynepeng/dsh-astock 0.8.8`）：
 
 ```sh
 node -e "const p=require(process.argv[1]); console.log(p.name, p.version)" \
@@ -178,11 +178,11 @@ DSH 启动时就锁定了插件模块集合，**不重启，界面上什么都�
 http://127.0.0.1:2328/api/dsh-astock/info
 ```
 
-期望看到 `"version": "0.8.7"`、`"tools": 19`、`"configSchema": true`、`"settingsFields": 45`。
+期望看到 `"version": "0.8.8"`、`"tools": 19`、`"configSchema": true`、`"settingsFields": 45`。
 
 再到对话里说一句「查一下 600000 的行情」——能返回真实价格就成功了。
 
-在界面上：右栏 `+` 里应该能找到「A股助手」；打开 **A股 → 配置**，能看到邮件向导四步 + 「其他配置」六组，页面底部版本脚注是 `v0.8.7`（**版本号对不上＝宿主还在跑旧代码**）。
+在界面上：右栏 `+` 里应该能找到「A股助手」；打开 **A股 → 配置**，能看到邮件向导四步 + 「其他配置」六组，页面底部版本脚注是 `v0.8.8`（**版本号对不上＝宿主还在跑旧代码**）。
 
 ### 装坏了：配置看起来被清空 / DSH 起不来
 
@@ -247,7 +247,7 @@ http://127.0.0.1:2328/api/dsh-astock/info
 
 **已知故障：启动报 `duplicate factory registration for "dsh-astock"`**
 
-0.8.2 及以前，`lib/client.js` 里模块 id 写成了 `dsh-astock`，而包名是 `@laynepeng/dsh-astock`。DSH 的 client-modules 用**包名**作模块 id：找不到就回退到单包 URL 再执行一次，第二次注册直接抛这个错，web boot 判定 `@laynepeng/dsh-astock: import failed`。0.8.3 已修正（id 改成 `@laynepeng/dsh-astock`；0.8.7 也包含该修复）。升级后如仍报错，说明宿主还在跑旧文件：删掉 `node_modules/@laynepeng/dsh-astock` 重装，或重启 DSH。
+0.8.2 及以前，`lib/client.js` 里模块 id 写成了 `dsh-astock`，而包名是 `@laynepeng/dsh-astock`。DSH 的 client-modules 用**包名**作模块 id：找不到就回退到单包 URL 再执行一次，第二次注册直接抛这个错，web boot 判定 `@laynepeng/dsh-astock: import failed`。0.8.3 已修正（id 改成 `@laynepeng/dsh-astock`；0.8.8 也包含该修复）。升级后如仍报错，说明宿主还在跑旧文件：删掉 `node_modules/@laynepeng/dsh-astock` 重装，或重启 DSH。
 
 ### 不想要了
 
@@ -311,6 +311,12 @@ dsh plugin --profile desktop remove @laynepeng/dsh-astock
 ### Outlook / Hotmail 为什么必须用 OAuth2
 
 Microsoft 已对个人账号关闭 SMTP Basic Auth，应用专用密码也会被拒（`535 5.7.139`）。OAuth2 用的是**设备码流程**：
+
+> **0.8.8 起 Outlook 发信默认走 Microsoft Graph（HTTPS 443），不再依赖 SMTP。**
+> 原因是部分网络下 `smtp-mail.outlook.com:587` 会在服务器返回 220 问候后直接断连（连 `NOOP` 都不回，不是配置问题）。
+> 升级后需要在 **A股 → 配置 → 第 2 步 OAuth2** 里**重新授权一次**（新版申请的是 Graph 的 `Mail.Send`，
+> 旧的 SMTP 授权不适用于 Graph；没重授权时会提示 401）。SMTP 仍保留为兜底。
+
 
 - 不需要回调端口、不需要自己注册 Azure 应用（内置了公共客户端，留空「客户端 ID」即可）
 - 授权一次后 refresh_token 落在本地，access_token 过期自动续期

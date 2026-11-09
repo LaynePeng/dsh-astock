@@ -24,6 +24,13 @@
 - [x] **选股面板持久化**：`pick-cache.json`（10 分钟 TTL、资金变化失效），「刷新」强制重扫
 - [x] 去 Python 化收尾：`python/` 与 `lib/bridge.js` 删除，19 个工具 + 面板 + 维护 + 邮件全部 Node 实现
 
+## 0.8.8 已完成
+
+- [x] Outlook/Hotmail 发信改走 **Microsoft Graph（HTTPS 443）**：部分网络在 SMTP 220 问候后直接断连，SMTP 不可用
+- [x] OAuth scope 改为 `https://graph.microsoft.com/Mail.Send`；升级后需重新授权一次
+- [x] Graph 失败（401/403/HTTP）给出可读原因；SMTP 保留为兜底，两边原因一起返回
+- [x] 测试邮件文案区分「Microsoft Graph」与「SMTP」通道
+
 ## 0.8.7 已完成
 
 - [x] 新增「计划」页签：插件内部定时（每日存档、邮件探测）与 DSH 定时任务（盯盘、盘后报告）分区展示
