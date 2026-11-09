@@ -819,3 +819,49 @@ test('交易面板：plan_cancel 把待触发事件单标成 cancelled', async (
   const after = await callRoute(route, '/api/dsh-astock/panel?panel=trade');
   assert.equal(after.body.plans.length, 0);
 });
+
+test('交易面板：流水与事件单都按服务端分页返回', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'dsh-astock-trade-'));
+  const ledger = join(dir, 'ledger.sqlite');
+  const { ctx, routes } = fakeCtx();
+  apply(ctx, { ledgerPath: ledger });
+  const route = routes.find((r) => r.path === '/api/dsh-astock/panel');
+
+  // 25 笔流水：第一页 20、第二页 5
+  for (let i = 0; i < 25; i += 1) {
+    const saved = await postRoute(route, {
+      op: 'trade_save', side: 'buy', code: '600000', price: 10, shares: 100,
+      trade_date: localToday(),
+    });
+    assert.equal(saved.body.ok, true);
+  }
+  const first = await callRoute(route, '/api/dsh-astock/panel?panel=trade');
+  assert.equal(first.body.trades.length, 20);
+  assert.deepEqual(first.body.tradesPage, { page: 1, pages: 2, total: 25, size: 20 });
+
+  const second = await callRoute(route, '/api/dsh-astock/panel?panel=trade&trade_page=2');
+  assert.equal(second.body.trades.length, 5);
+  assert.equal(second.body.tradesPage.page, 2);
+
+  // 页码越界时夹到最后一页，不返回空页
+  const clamped = await callRoute(route, '/api/dsh-astock/panel?panel=trade&trade_page=99');
+  assert.equal(clamped.body.tradesPage.page, 2);
+  assert.equal(clamped.body.trades.length, 5);
+
+  // 10 张待触发事件单：每页 8，第二页 2
+  const { Ledger } = await import('../lib/js/ledger.js');
+  const store = new Ledger(ledger);
+  for (let i = 0; i < 10; i += 1) {
+    store.savePlan({
+      plan_id: `P20261109-${i + 1}`,
+      code: '600000', name: '浦发银行', side: 'sell', price: 9.2, shares: 100,
+      stop_loss: 9.2, reason: '分页测试', kind: 'conditional_order',
+    });
+  }
+  const plansFirst = await callRoute(route, '/api/dsh-astock/panel?panel=trade');
+  assert.equal(plansFirst.body.plans.length, 8);
+  assert.deepEqual(plansFirst.body.plansPage, { page: 1, pages: 2, total: 10, size: 8 });
+  const plansSecond = await callRoute(route, '/api/dsh-astock/panel?panel=trade&plan_page=2');
+  assert.equal(plansSecond.body.plans.length, 2);
+  assert.equal(plansSecond.body.plansPage.page, 2);
+});

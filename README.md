@@ -152,7 +152,7 @@ dsh plugin --profile desktop add link:/绝对路径/to/dsh-astock
 
 注意桌面版用的是 `desktop` profile，命令行里的 `--profile web` 装进去的是另一个 profile，界面上不会出现。`link:` 而不是 `file:`：前者在 `node_modules` 里是软链，改了源码立刻生效；后者是复制，改完要重装。
 
-装完先确认装的是本项目（输出应是 `@laynepeng/dsh-astock 0.8.5`）：
+装完先确认装的是本项目（输出应是 `@laynepeng/dsh-astock 0.8.6`）：
 
 ```sh
 node -e "const p=require(process.argv[1]); console.log(p.name, p.version)" \
@@ -178,11 +178,11 @@ DSH 启动时就锁定了插件模块集合，**不重启，界面上什么都�
 http://127.0.0.1:2328/api/dsh-astock/info
 ```
 
-期望看到 `"version": "0.8.5"`、`"tools": 19`、`"configSchema": true`、`"settingsFields": 45`。
+期望看到 `"version": "0.8.6"`、`"tools": 19`、`"configSchema": true`、`"settingsFields": 45`。
 
 再到对话里说一句「查一下 600000 的行情」——能返回真实价格就成功了。
 
-在界面上：右栏 `+` 里应该能找到「A股助手」；打开 **A股 → 配置**，能看到邮件向导四步 + 「其他配置」六组，页面底部版本脚注是 `v0.8.5`（**版本号对不上＝宿主还在跑旧代码**）。
+在界面上：右栏 `+` 里应该能找到「A股助手」；打开 **A股 → 配置**，能看到邮件向导四步 + 「其他配置」六组，页面底部版本脚注是 `v0.8.6`（**版本号对不上＝宿主还在跑旧代码**）。
 
 ### 装坏了：配置看起来被清空 / DSH 起不来
 
@@ -247,7 +247,7 @@ http://127.0.0.1:2328/api/dsh-astock/info
 
 **已知故障：启动报 `duplicate factory registration for "dsh-astock"`**
 
-0.8.2 及以前，`lib/client.js` 里模块 id 写成了 `dsh-astock`，而包名是 `@laynepeng/dsh-astock`。DSH 的 client-modules 用**包名**作模块 id：找不到就回退到单包 URL 再执行一次，第二次注册直接抛这个错，web boot 判定 `@laynepeng/dsh-astock: import failed`。0.8.3 已修正（id 改成 `@laynepeng/dsh-astock`；0.8.5 也包含该修复）。升级后如仍报错，说明宿主还在跑旧文件：删掉 `node_modules/@laynepeng/dsh-astock` 重装，或重启 DSH。
+0.8.2 及以前，`lib/client.js` 里模块 id 写成了 `dsh-astock`，而包名是 `@laynepeng/dsh-astock`。DSH 的 client-modules 用**包名**作模块 id：找不到就回退到单包 URL 再执行一次，第二次注册直接抛这个错，web boot 判定 `@laynepeng/dsh-astock: import failed`。0.8.3 已修正（id 改成 `@laynepeng/dsh-astock`；0.8.6 也包含该修复）。升级后如仍报错，说明宿主还在跑旧文件：删掉 `node_modules/@laynepeng/dsh-astock` 重装，或重启 DSH。
 
 ### 不想要了
 
@@ -345,6 +345,8 @@ Microsoft 已对个人账号关闭 SMTP Basic Auth，应用专用密码也会被
 **记一笔**：方向（买/卖）、代码、成交价、数量、日期、费用（留空按费率自动算）、备注。保存后台账自动更新持仓成本、T+1 可卖与已实现盈亏；可以从持仓列表一键填入代码。删除流水会先让你确认一次，删完按剩余流水重算持仓。
 
 **待触发事件单**：`astock_hint` / `astock_act` 生成的条件单会落成计划（`P` 开头），面板里能看到触发价、止损止盈和状态，也可以手动撤销。成交后用 `astock_sync` 把回单粘回来，会自动匹配计划并标记已成交。
+
+**流水与事件单都分页**：最近流水每页 20 笔、待触发事件单每页 8 张，底部有「第 X / Y 页 · 共 N 条」和上一页/下一页；页码越界会自动夹到最后一页，数据再多也不会把面板撑爆。
 
 **事件单（券商条件单）格式**：`astock_hint` 与 `astock_act` 现在直接给出券商 App「条件单 / 智能单」的填写字段——触发条件（最新价 ≤ / ≥）、委托方向、数量、限价、有效期，一张单只表达一个触发条件（止损一张、止盈一张、跟踪回撤一张），照抄即可，不用自己换算。
 
