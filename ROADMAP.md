@@ -24,6 +24,13 @@
 - [x] **选股面板持久化**：`pick-cache.json`（10 分钟 TTL、资金变化失效），「刷新」强制重扫
 - [x] 去 Python 化收尾：`python/` 与 `lib/bridge.js` 删除，19 个工具 + 面板 + 维护 + 邮件全部 Node 实现
 
+## 0.9.0 已完成
+
+- [x] 交易页新增「新建事件单」表单：代码/方向/触发条件（≤ / ≥）/触发价/数量/委托价/有效期/备注，不用再让模型生成
+- [x] plans 表新增 `trigger_kind` / `trigger_price` / `order_type` / `valid_until` / `source`，老库自动 ALTER 补列
+- [x] 事件单与模型生成的条件单同表展示，可撤销；成交后仍由 `astock_sync` 匹配
+- [x] 明确提示「插件不下单，记完仍要在券商 App 挂单」
+
 ## 0.8.9 已完成
 
 - [x] OAuth 默认租户改为 `common`：个人账号与组织账号都能授权（原 `consumers` 只覆盖个人）

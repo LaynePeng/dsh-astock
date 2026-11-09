@@ -89,7 +89,7 @@ dsh plugin --profile desktop add link:/absolute/path/to/dsh-astock
 
 Desktop uses the `desktop` profile; `--profile web` installs into a different profile and nothing shows up in the UI. Use `link:` rather than `file:`: the former symlinks, so source edits apply immediately; the latter copies.
 
-Confirm the package is this project (it must print `@laynepeng/dsh-astock 0.8.9`):
+Confirm the package is this project (it must print `@laynepeng/dsh-astock 0.9.0`):
 
 ```sh
 node -e "const p=require(process.argv[1]); console.log(p.name, p.version)" \
@@ -106,7 +106,7 @@ Verify:
 http://127.0.0.1:<your-dsh-port>/api/dsh-astock/info
 ```
 
-Expect `"version": "0.8.9"`, `"tools": 19`, `"configSchema": true`, `"settingsFields": 45`.
+Expect `"version": "0.9.0"`, `"tools": 19`, `"configSchema": true`, `"settingsFields": 45`.
 
 ### It broke: config looks wiped / DSH will not start
 
@@ -147,7 +147,7 @@ The plugin did **not** delete your config. When the host fails to boot, the Desk
 
 **Known failure: boot reports `duplicate factory registration for "dsh-astock"`**
 
-Up to 0.8.2, `lib/client.js` registered the browser module under `dsh-astock` while the package is `@laynepeng/dsh-astock`. DSH's client-modules key modules by **package name**: the row is not found after the first execution, the loader falls back to the package URL and runs the same bundle again, and the second registration throws this error, so web boot reports `@laynepeng/dsh-astock: import failed`. Fixed in 0.8.3 (the id is now `@laynepeng/dsh-astock`; 0.8.9 includes it). If it still happens after upgrading, the host is running the old files: remove `node_modules/@laynepeng/dsh-astock` and reinstall, or restart DSH.
+Up to 0.8.2, `lib/client.js` registered the browser module under `dsh-astock` while the package is `@laynepeng/dsh-astock`. DSH's client-modules key modules by **package name**: the row is not found after the first execution, the loader falls back to the package URL and runs the same bundle again, and the second registration throws this error, so web boot reports `@laynepeng/dsh-astock: import failed`. Fixed in 0.8.3 (the id is now `@laynepeng/dsh-astock`; 0.9.0 includes it). If it still happens after upgrading, the host is running the old files: remove `node_modules/@laynepeng/dsh-astock` and reinstall, or restart DSH.
 
 Uninstall: `dsh plugin --profile desktop remove @laynepeng/dsh-astock`.
 

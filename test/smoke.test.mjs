@@ -938,3 +938,66 @@ test('计划页：宿主没有 schedule 服务时给出可读原因，而不是 
   assert.equal(started.body.ok, false);
   assert.match(started.body.message, /定时服务|schedule/);
 });
+
+test('交易面板：手动新建事件单落成 plans，并在列表里带触发条件与有效期', async () => {
+  const ledger = join(mkdtempSync(join(tmpdir(), 'dsh-astock-event-')), 'ledger.sqlite');
+  const { ctx, routes } = fakeCtx();
+  apply(ctx, { ledgerPath: ledger });
+  const route = routes.find((r) => r.path === '/api/dsh-astock/panel');
+
+  const created = await postRoute(route, {
+    op: 'event_order_save',
+    code: '600000',
+    name: '浦发银行',
+    side: 'sell',
+    trigger_kind: 'price_below',
+    trigger_price: 9.01,
+    shares: 1000,
+    price: 9,
+    valid_until: '2026-11-30',
+    note: '止损',
+  });
+  assert.equal(created.body.ok, true);
+  assert.match(created.body.message, /已创建事件单/);
+  const planId = created.body.plan.plan_id;
+  assert.match(planId, /^P\d{8}-\d+$/);
+
+  const view = await callRoute(route, '/api/dsh-astock/panel?panel=trade');
+  assert.equal(view.body.plans.length, 1);
+  const plan = view.body.plans[0];
+  assert.equal(plan.plan_id, planId);
+  assert.equal(plan.triggerKind, 'price_below');
+  assert.equal(plan.triggerPrice, 9.01);
+  assert.equal(plan.price, 9);
+  assert.equal(plan.orderType, 'limit');
+  assert.equal(plan.validUntil, '2026-11-30');
+  assert.equal(plan.source, 'manual');
+  assert.equal(plan.kind, 'event_order');
+
+  // 撤销后不再出现在待触发列表
+  const cancelled = await postRoute(route, { op: 'plan_cancel', plan_id: planId });
+  assert.equal(cancelled.body.ok, true);
+  const after = await callRoute(route, '/api/dsh-astock/panel?panel=trade');
+  assert.equal(after.body.plans.length, 0);
+});
+
+test('交易面板：事件单参数错误返回可读 message', async () => {
+  const ledger = join(mkdtempSync(join(tmpdir(), 'dsh-astock-event-')), 'ledger.sqlite');
+  const { ctx, routes } = fakeCtx();
+  apply(ctx, { ledgerPath: ledger });
+  const route = routes.find((r) => r.path === '/api/dsh-astock/panel');
+
+  const badTrigger = await postRoute(route, {
+    op: 'event_order_save', code: '600000', side: 'sell',
+    trigger_kind: 'cross', trigger_price: 9, shares: 100,
+  });
+  assert.equal(badTrigger.body.ok, false);
+  assert.match(badTrigger.body.message, /触发条件/);
+
+  const badPrice = await postRoute(route, {
+    op: 'event_order_save', code: '600000', side: 'sell',
+    trigger_kind: 'price_below', trigger_price: 0, shares: 100,
+  });
+  assert.equal(badPrice.body.ok, false);
+  assert.match(badPrice.body.message, /触发价/);
+});
