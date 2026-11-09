@@ -22,7 +22,16 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const PACKAGE_NAME = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8')).name;
 
 /** 最小的 React 替身：组件在本测试里不会被真正渲染。 */
+class ComponentStub {
+  constructor(props) {
+    this.props = props || {};
+    this.state = {};
+  }
+}
+
 const reactStub = {
+  Component: ComponentStub,
+  PureComponent: ComponentStub,
   useState: (initial) => [initial, () => {}],
   useEffect: () => {},
   useCallback: (fn) => fn,
@@ -30,9 +39,21 @@ const reactStub = {
   createElement: (type, props, ...children) => ({ type, props, children }),
 };
 
+/**
+ * jsx 替身要和 React 一样严格：
+ *   · 缺 props（`jsx("br")`）在 React 里会直接抛 "Cannot read properties of undefined"，
+ *     宽松的替身会把这种错误漏到真实浏览器里（0.8.4 的「交易页空白」就是这么来的）；
+ *   · key 必须作为第三个参数传，不能塞进 props。
+ */
+function jsxLike(type, props, key) {
+  assert.ok(props !== undefined, `jsx(${String(type)}) 缺少 props；React 会直接抛错`);
+  assert.ok(!("key" in props), `jsx(${String(type)}) 的 key 要作为第三个参数传，不能放在 props 里`);
+  return { type, props, key };
+}
+
 const jsxStub = {
-  jsx: (type, props) => ({ type, props }),
-  jsxs: (type, props) => ({ type, props }),
+  jsx: jsxLike,
+  jsxs: jsxLike,
 };
 
 /**
