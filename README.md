@@ -1,19 +1,12 @@
 # dsh-astock
 
-[English](README.en.md) · **简体中文**
+让 DeepSeek Harness 真的懂你的账户：盯盘、记账、算股数、查舆情、跑回测——**你在券商 App 下单，插件负责把每一笔算清楚**。
 
-> 让 DeepSeek Harness 真的懂你的账户：盯盘、记账、算股数、查舆情、跑回测——**你在券商 App 下单，插件负责把每一笔算清楚**。
+![A股助手：持仓 / 交易 / 计划三个面板](docs/images/banner.png)
 
-[![npm](https://img.shields.io/badge/npm-暂未发布-lightgrey)](RELEASE.md)
-[![tests](https://img.shields.io/badge/tests-197%20passed-brightgreen)](test)
-[![DSH](https://img.shields.io/badge/DeepSeek%20Harness-0.2.x-4B6EF5)](https://github.com/deepseek-ai/deepseek-harness)
-[![license](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
+*持仓 · 交易 · 计划 —— 插件真实面板渲染，示例数据，非设计稿。*
 
-<p align="center">
-  <img src="docs/images/panel-overview.png" alt="A股助手右栏面板：持仓 / 交易 / 计划" width="100%">
-</p>
-
-<p align="center"><sub>持仓 · 交易 · 计划 —— 插件真实面板渲染（示例数据，非设计稿）</sub></p>
+> 不接任何委托通道：没有下单、没有撤单、不登录券商。只做三件事：取数、记账、算账。
 
 ## 它替你做的三件事
 
@@ -46,9 +39,7 @@ dsh plugin --profile desktop add github:LaynePeng/dsh-astock
 
 ### 持仓：一眼看清该不该动手
 
-<p align="center">
-  <img src="docs/images/panel-portfolio.png" alt="持仓页：总资产、浮动盈亏、止损余量、T+1 可卖" width="440">
-</p>
+![持仓页：总资产、浮动盈亏、止损余量、T+1 可卖](docs/images/panel-portfolio.png)
 
 - 总资产 / 持仓市值 / 浮动盈亏 / 可用资金，加上「今日超额」（对沪指）与近 5 日收盘净值曲线
 - 每只持仓：现价、成本、浮盈、占比（对比单票上限）、止损已用掉多少、今日可卖多少
@@ -56,9 +47,7 @@ dsh plugin --profile desktop add github:LaynePeng/dsh-astock
 
 ### 交易：记一笔，或挂一张事件单
 
-<p align="center">
-  <img src="docs/images/panel-trade.png" alt="交易页：录入成交、新建事件单、最近流水、待触发事件单" width="440">
-</p>
+![交易页：录入成交、新建事件单、最近流水、待触发事件单](docs/images/panel-trade.png)
 
 - **记一笔**：买/卖、代码、价格、数量、日期、费用（可覆盖）、备注；保存后自动更新成本、T+1 与已实现盈亏
 - **新建事件单**：代码、方向、触发条件（价格 ≤ / ≥）、触发价、数量、委托价、有效期——直接照着券商 App 的条件单填
@@ -66,9 +55,7 @@ dsh plugin --profile desktop add github:LaynePeng/dsh-astock
 
 ### 计划：两类定时，分开看
 
-<p align="center">
-  <img src="docs/images/panel-auto.png" alt="计划页：每日存档/邮件探测 + 盯盘/盘后报告" width="440">
-</p>
+![计划页：每日存档/邮件探测 + 盯盘/盘后报告](docs/images/panel-auto.png)
 
 - **插件自己的定时**：每日 15:05 存档 + 收盘净值、邮件探测——不在 DSH 的自动化任务里，这里能看到上次执行结果
 - **DSH 定时任务**：盯盘（工作日 9:00–14:59）与盘后报告（15:05），可一键启动/停止
@@ -189,7 +176,7 @@ dsh plugin --profile desktop add link:/绝对路径/to/dsh-astock
 
 注意桌面版用的是 `desktop` profile，命令行里的 `--profile web` 装进去的是另一个 profile，界面上不会出现。`link:` 而不是 `file:`：前者在 `node_modules` 里是软链，改了源码立刻生效；后者是复制，改完要重装。
 
-装完先确认装的是本项目（输出应是 `@laynepeng/dsh-astock 0.9.1`）：
+装完先确认装的是本项目（输出应是 `@laynepeng/dsh-astock 0.9.2`）：
 
 ```sh
 node -e "const p=require(process.argv[1]); console.log(p.name, p.version)" \
@@ -215,11 +202,11 @@ DSH 启动时就锁定了插件模块集合，**不重启，界面上什么都�
 http://127.0.0.1:2328/api/dsh-astock/info
 ```
 
-期望看到 `"version": "0.9.1"`、`"tools": 19`、`"configSchema": true`、`"settingsFields": 45`。
+期望看到 `"version": "0.9.2"`、`"tools": 19`、`"configSchema": true`、`"settingsFields": 45`。
 
 再到对话里说一句「查一下 600000 的行情」——能返回真实价格就成功了。
 
-在界面上：右栏 `+` 里应该能找到「A股助手」；打开 **A股 → 配置**，能看到邮件向导四步 + 「其他配置」六组，页面底部版本脚注是 `v0.9.1`（**版本号对不上＝宿主还在跑旧代码**）。
+在界面上：右栏 `+` 里应该能找到「A股助手」；打开 **A股 → 配置**，能看到邮件向导四步 + 「其他配置」六组，页面底部版本脚注是 `v0.9.2`（**版本号对不上＝宿主还在跑旧代码**）。
 
 ### 装坏了：配置看起来被清空 / DSH 起不来
 
@@ -284,7 +271,7 @@ http://127.0.0.1:2328/api/dsh-astock/info
 
 **已知故障：启动报 `duplicate factory registration for "dsh-astock"`**
 
-0.8.2 及以前，`lib/client.js` 里模块 id 写成了 `dsh-astock`，而包名是 `@laynepeng/dsh-astock`。DSH 的 client-modules 用**包名**作模块 id：找不到就回退到单包 URL 再执行一次，第二次注册直接抛这个错，web boot 判定 `@laynepeng/dsh-astock: import failed`。0.8.3 已修正（id 改成 `@laynepeng/dsh-astock`；0.9.1 也包含该修复）。升级后如仍报错，说明宿主还在跑旧文件：删掉 `node_modules/@laynepeng/dsh-astock` 重装，或重启 DSH。
+0.8.2 及以前，`lib/client.js` 里模块 id 写成了 `dsh-astock`，而包名是 `@laynepeng/dsh-astock`。DSH 的 client-modules 用**包名**作模块 id：找不到就回退到单包 URL 再执行一次，第二次注册直接抛这个错，web boot 判定 `@laynepeng/dsh-astock: import failed`。0.8.3 已修正（id 改成 `@laynepeng/dsh-astock`；0.9.2 也包含该修复）。升级后如仍报错，说明宿主还在跑旧文件：删掉 `node_modules/@laynepeng/dsh-astock` 重装，或重启 DSH。
 
 ### 不想要了
 
@@ -357,7 +344,7 @@ Microsoft 已对个人账号关闭 SMTP Basic Auth，应用专用密码也会被
 - 内置客户端将来若失效，可在「客户端 ID」里填自己的 Azure 公共客户端（允许设备码），不用改代码。
 - 不想用 OAuth：QQ / 163 用授权码当**发件人**即可，收件人可以填任意邮箱（包括 Hotmail）。
 
-> **0.9.1 起 Outlook 发信默认走 Microsoft Graph（HTTPS 443），不再依赖 SMTP。**
+> **0.9.2 起 Outlook 发信默认走 Microsoft Graph（HTTPS 443），不再依赖 SMTP。**
 > 原因是部分网络下 `smtp-mail.outlook.com:587` 会在服务器返回 220 问候后直接断连（连 `NOOP` 都不回，不是配置问题）。
 > 升级后需要在 **A股 → 配置 → 第 2 步 OAuth2** 里**重新授权一次**（新版申请的是 Graph 的 `Mail.Send`，
 > 旧的 SMTP 授权不适用于 Graph；没重授权时会提示 401）。SMTP 仍保留为兜底。
@@ -550,6 +537,13 @@ DSH 工具调用 ──► lib/plugin.js（注册 19 个工具 + 面板端点 + 
 **安全边界**：工具白名单固定（没有执行任意命令的入口），网络只去公开行情/数据源；写盘只落在 `~/.dsh/astock-data/`（台账、存档、`settings.json`、`oauth.json`），**不读写 DSH 的 profile 配置或 `cordis.patch.yml`**。
 
 ---
+
+## 项目状态
+
+- 测试：197 项通过（`node --test test/*.test.mjs`）
+- 许可证：Apache-2.0
+- 宿主：DeepSeek Harness 0.2.x（Electron 桌面版 / `dsh web`）
+- npm：暂未发布，用 `github:` 安装
 
 ## 来源与致谢
 

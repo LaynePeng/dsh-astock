@@ -1,19 +1,12 @@
 # dsh-astock
 
-**English** · [简体中文](README.md)
+Make DeepSeek Harness actually understand your portfolio: watch the market, keep the ledger, size the orders, check the sentiment, run backtests — **you place the trade in your broker app, the plugin does the math**.
 
-> Make DeepSeek Harness actually understand your portfolio: watch the market, keep the ledger, size the orders, check the sentiment, run backtests — **you place the trade in your broker app, the plugin does the math**.
+![A股助手: positions / trade / plan panels](docs/images/banner.png)
 
-[![npm](https://img.shields.io/badge/npm-not%20published%20yet-lightgrey)](RELEASE.md)
-[![tests](https://img.shields.io/badge/tests-197%20passed-brightgreen)](test)
-[![DSH](https://img.shields.io/badge/DeepSeek%20Harness-0.2.x-4B6EF5)](https://github.com/deepseek-ai/deepseek-harness)
-[![license](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
+*Positions · Trade · Plan — rendered from the real plugin panel, sample data.*
 
-<p align="center">
-  <img src="docs/images/panel-overview.png" alt="dsh-astock right-sidebar panel: positions / trade / plan" width="100%">
-</p>
-
-<p align="center"><sub>Positions · Trade · Plan — rendered from the real plugin panel (sample data, not a mockup).</sub></p>
+> No order channel: no placing, no cancelling, no broker login. It fetches, records and calculates.
 
 ## Three things it does for you
 
@@ -44,9 +37,7 @@ Fully quit and reopen DSH, then pick **A股助手** from the `+` at the end of t
 
 ### Positions: know whether to act, at a glance
 
-<p align="center">
-  <img src="docs/images/panel-portfolio.png" alt="Positions page: equity, P&L, stop distance, T+1 sellable" width="440">
-</p>
+![Positions page: equity, P&L, stop distance, T+1 sellable](docs/images/panel-portfolio.png)
 
 - Equity / market value / unrealised P&L / cash, plus today's excess return vs. the Shanghai index and a 5-day closing-equity curve.
 - Each holding shows price, cost, P&L, weight vs. the single-name cap, how much of the stop is used, and how many shares are sellable today.
@@ -54,9 +45,7 @@ Fully quit and reopen DSH, then pick **A股助手** from the `+` at the end of t
 
 ### Trade: record a fill, or park a conditional order
 
-<p align="center">
-  <img src="docs/images/panel-trade.png" alt="Trade page: record a fill, create a conditional order, recent fills, pending orders" width="440">
-</p>
+![Trade page: record a fill, create a conditional order, recent fills, pending orders](docs/images/panel-trade.png)
 
 - **Record a fill**: side, code, price, shares, date, fee override, note — the ledger updates cost, T+1 and realised P&L.
 - **Create a conditional order**: code, side, trigger (price ≤ / ≥), trigger price, shares, limit price, expiry — the same fields your broker app asks for.
@@ -64,9 +53,7 @@ Fully quit and reopen DSH, then pick **A股助手** from the `+` at the end of t
 
 ### Plan: two kinds of schedules, side by side
 
-<p align="center">
-  <img src="docs/images/panel-auto.png" alt="Plan page: plugin timers and DSH scheduled tasks" width="440">
-</p>
+![Plan page: plugin timers and DSH scheduled tasks](docs/images/panel-auto.png)
 
 - **Plugin timers**: daily 15:05 archive + closing equity, mail probe — these are not DSH automation tasks, and their last run is shown here.
 - **DSH scheduled tasks**: watch (weekdays 9:00–14:59) and the post-close report (15:05), with start/stop buttons.
@@ -145,7 +132,7 @@ dsh plugin --profile desktop add github:LaynePeng/dsh-astock
 
 Desktop uses the `desktop` profile; `--profile web` installs into a different profile and nothing shows up in the UI. Use `link:` rather than `file:`: the former symlinks, so source edits apply immediately; the latter copies.
 
-Confirm the package is this project (it must print `@laynepeng/dsh-astock 0.9.1`):
+Confirm the package is this project (it must print `@laynepeng/dsh-astock 0.9.2`):
 
 ```sh
 node -e "const p=require(process.argv[1]); console.log(p.name, p.version)" \
@@ -162,7 +149,7 @@ Verify:
 http://127.0.0.1:<your-dsh-port>/api/dsh-astock/info
 ```
 
-Expect `"version": "0.9.1"`, `"tools": 19`, `"configSchema": true`, `"settingsFields": 45`.
+Expect `"version": "0.9.2"`, `"tools": 19`, `"configSchema": true`, `"settingsFields": 45`.
 
 ### It broke: config looks wiped / DSH will not start
 
@@ -203,7 +190,7 @@ The plugin did **not** delete your config. When the host fails to boot, the Desk
 
 **Known failure: boot reports `duplicate factory registration for "dsh-astock"`**
 
-Up to 0.8.2, `lib/client.js` registered the browser module under `dsh-astock` while the package is `@laynepeng/dsh-astock`. DSH's client-modules key modules by **package name**: the row is not found after the first execution, the loader falls back to the package URL and runs the same bundle again, and the second registration throws this error, so web boot reports `@laynepeng/dsh-astock: import failed`. Fixed in 0.8.3 (the id is now `@laynepeng/dsh-astock`; 0.9.1 includes it). If it still happens after upgrading, the host is running the old files: remove `node_modules/@laynepeng/dsh-astock` and reinstall, or restart DSH.
+Up to 0.8.2, `lib/client.js` registered the browser module under `dsh-astock` while the package is `@laynepeng/dsh-astock`. DSH's client-modules key modules by **package name**: the row is not found after the first execution, the loader falls back to the package URL and runs the same bundle again, and the second registration throws this error, so web boot reports `@laynepeng/dsh-astock: import failed`. Fixed in 0.8.3 (the id is now `@laynepeng/dsh-astock`; 0.9.2 includes it). If it still happens after upgrading, the host is running the old files: remove `node_modules/@laynepeng/dsh-astock` and reinstall, or restart DSH.
 
 Uninstall: `dsh plugin --profile desktop remove @laynepeng/dsh-astock`.
 
