@@ -4,33 +4,87 @@
 
 > Make DeepSeek Harness actually understand your portfolio: watch the market, keep the ledger, size the orders, check the sentiment, run backtests — **you place the trade in your broker app, the plugin does the math**.
 
-Ask an AI about a stock today and you usually get a plausible-sounding paragraph backed by no data: no real price, no idea what you actually hold, no fee breakdown. **dsh-astock** is a [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) (DSH) plugin that fixes that. It fetches live quotes, reads your real position ledger, and answers with numbers: current price, cost basis, unrealised P&L, how many shares are sellable today (T+1), how far you are from the stop, what the round-trip fees are, and how many shares this order should be.
+[![npm](https://img.shields.io/badge/npm-not%20published%20yet-lightgrey)](RELEASE.md)
+[![tests](https://img.shields.io/badge/tests-197%20passed-brightgreen)](test)
+[![DSH](https://img.shields.io/badge/DeepSeek%20Harness-0.2.x-4B6EF5)](https://github.com/deepseek-ai/deepseek-harness)
+[![license](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
+
+<p align="center">
+  <img src="docs/images/panel-overview.png" alt="dsh-astock right-sidebar panel: positions / trade / plan" width="100%">
+</p>
+
+<p align="center"><sub>Positions · Trade · Plan — rendered from the real plugin panel (sample data, not a mockup).</sub></p>
+
+## Three things it does for you
+
+- **Gets the numbers right**: live price, cost basis, unrealised P&L, T+1 sellable shares, stop/take-profit levels and the exact fee of this sell — all from *your* ledger, not an estimate.
+- **Keeps the books**: every fill, every conditional order and every backup lands in a local SQLite file. Move machines by copying one directory; nothing goes to a server.
+- **Watches when you can't**: on trading days it checks positions and watchlist on a schedule, alerts only when a threshold fires, and can send a zero-token risk e-mail.
+
+Ask an AI about a stock today and you usually get a plausible-sounding paragraph backed by no data. **dsh-astock** is a [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) (DSH) plugin that fixes that: it fetches live quotes, reads your real position ledger, and answers with numbers.
 
 It has **no order channel** — no placing, no cancelling, no broker login. You always execute in your own broker app; the plugin only fetches, records and calculates.
 
 > **⚠️ Read this first**: this plugin is a **tool, not an adviser**. It does not recommend trades, does not manage money, and promises no returns. Quotes come from public APIs and may be delayed, missing or wrong; the maths depends entirely on the trades and fee rates *you* enter; the model can misread the data. **You trade at your own risk — the authors and contributors accept no liability.** Full terms: [Disclaimer](#disclaimer).
 
+## Install in 30 seconds
+
+```sh
+# From DSH: Settings → Plugins, or on the command line:
+dsh plugin --profile desktop add github:LaynePeng/dsh-astock
+```
+
+Fully quit and reopen DSH, then pick **A股助手** from the `+` at the end of the right sidebar tab strip. The npm package is not published yet — see [RELEASE.md](RELEASE.md).
+
+> macOS and Windows. QQ / 163 mailboxes use an app password; Outlook / Hotmail use OAuth2 with a built-in public client (no Azure registration needed).
+
 ---
 
 ## What it looks like
 
-A new **A股 (A-shares)** tab appears in the right sidebar:
+### Positions: know whether to act, at a glance
 
-```text
-┌─ A股 ──────────────────────────────────┐
-│ 持仓  选股  维护  配置          23:41 ⟳│
-├────────────────────────────────────────┤
-│ 总资产 300,030.00 元  持仓市值 100,300 │
-│                                        │
-│ 浦发银行  600000            +1.62%     │
-│ 现价 10.03    成本 9.505               │
-│ 浮盈 +524.90  盈亏% +5.52%             │
-│ 占比 33.4% / 上限 25%   可卖 1000 股   │
-│ ⚠ 单票占比 33.4% 超上限                │
-└────────────────────────────────────────┘
-```
+<p align="center">
+  <img src="docs/images/panel-portfolio.png" alt="Positions page: equity, P&L, stop distance, T+1 sellable" width="440">
+</p>
 
-Four views: **positions** (one card per holding, clickable "analyse" buttons that put a question in the composer), **stock picking** (three strategies side by side), **maintenance** (archive, backtest, automation, export/import/backup), **configuration** (four-step mail wizard, 45 plugin settings, mail health check and a send-test button).
+- Equity / market value / unrealised P&L / cash, plus today's excess return vs. the Shanghai index and a 5-day closing-equity curve.
+- Each holding shows price, cost, P&L, weight vs. the single-name cap, how much of the stop is used, and how many shares are sellable today.
+- A stop, take-profit or overweight condition turns the card red with the reason.
+
+### Trade: record a fill, or park a conditional order
+
+<p align="center">
+  <img src="docs/images/panel-trade.png" alt="Trade page: record a fill, create a conditional order, recent fills, pending orders" width="440">
+</p>
+
+- **Record a fill**: side, code, price, shares, date, fee override, note — the ledger updates cost, T+1 and realised P&L.
+- **Create a conditional order**: code, side, trigger (price ≤ / ≥), trigger price, shares, limit price, expiry — the same fields your broker app asks for.
+- Deleting a fill asks twice and rebuilds positions; conditional orders can be cancelled and are matched on fill by `astock_sync`.
+
+### Plan: two kinds of schedules, side by side
+
+<p align="center">
+  <img src="docs/images/panel-auto.png" alt="Plan page: plugin timers and DSH scheduled tasks" width="440">
+</p>
+
+- **Plugin timers**: daily 15:05 archive + closing equity, mail probe — these are not DSH automation tasks, and their last run is shown here.
+- **DSH scheduled tasks**: watch (weekdays 9:00–14:59) and the post-close report (15:05), with start/stop buttons.
+- The clock icon in the left sidebar ("Automation tasks") lists every DSH task; this page shows the ones that belong to the plugin.
+
+---
+
+## Ask in chat
+
+Copy any of these:
+
+> "How is my portfolio doing — anything I should handle?"
+>
+> "600000 is below 9.5. Should I stop out? Include the fees."
+>
+> "How is the market today — did I beat the index?"
+>
+> "Scan with all three strategies and tell me which one fits now."
 
 ---
 
@@ -64,11 +118,11 @@ All tools **only read public market data and only write a local SQLite ledger**.
 
 ---
 
-## Install
+## Install details (package name / Windows / troubleshooting)
 
 ### Know which package this is (important)
 
-This project is **`@laynepeng/dsh-astock`**. It is **not published on npm**, so it can only be installed from this checkout with `link:`.
+This project is **`@laynepeng/dsh-astock`**. It is **not published on npm**. Install it with `dsh plugin --profile desktop add github:LaynePeng/dsh-astock`; use `link:` only when developing against a local checkout.
 
 > **Do not** search the plugin market for `dsh-astock`: the npm package [`dsh-astock`](https://www.npmjs.com/package/dsh-astock) is a **different author's** A-share/HK quant workbench. Installing it and then pasting this repository's `cordis.patch.yml` into your profile leaves an insert row for a module that is not installed. On a cold boot that can fail the host; the Desktop recovery dialog then renames your `cordis.patch.yml` to `cordis.patch.yml.bak-<epoch>` and writes an `[]` stub — which looks as if your entire config was deleted. Recovery is below.
 
@@ -80,10 +134,12 @@ This project is **`@laynepeng/dsh-astock`**. It is **not published on npm**, so 
 
 ### Install
 
-From **this checkout**:
+From GitHub (or `link:` for a local checkout):
 
 ```sh
-dsh plugin --profile desktop add link:/absolute/path/to/dsh-astock
+dsh plugin --profile desktop add github:LaynePeng/dsh-astock
+# local development:
+# dsh plugin --profile desktop add link:/absolute/path/to/dsh-astock
 # Windows: dsh plugin --profile desktop add link:C:/codes/dsh-astock
 ```
 

@@ -4,50 +4,81 @@
 
 > 让 DeepSeek Harness 真的懂你的账户：盯盘、记账、算股数、查舆情、跑回测——**你在券商 App 下单，插件负责把每一笔算清楚**。
 
+[![npm](https://img.shields.io/badge/npm-暂未发布-lightgrey)](RELEASE.md)
+[![tests](https://img.shields.io/badge/tests-197%20passed-brightgreen)](test)
+[![DSH](https://img.shields.io/badge/DeepSeek%20Harness-0.2.x-4B6EF5)](https://github.com/deepseek-ai/deepseek-harness)
+[![license](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
+
+<p align="center">
+  <img src="docs/images/panel-overview.png" alt="A股助手右栏面板：持仓 / 交易 / 计划" width="100%">
+</p>
+
+<p align="center"><sub>持仓 · 交易 · 计划 —— 插件真实面板渲染（示例数据，非设计稿）</sub></p>
+
+## 它替你做的三件事
+
+- **算清楚**：现价、成本、浮盈、T+1 可卖、止损止盈价、这笔卖出的费用——全部用你的真实台账算，不是拍脑袋。
+- **记明白**：每笔成交、每张事件单、备份都落本地 SQLite；换机器拷一个目录就走，不经过任何服务器。
+- **盯得住**：交易日定时检查持仓与自选，只有触发阈值才提醒；高风险信号可以零 token 直接发邮件。
+
 现在用 AI 看股票，大概是这样的：你问「我这只还能拿吗」，它给你一段听起来很有道理、但没看任何真实数据的分析；你问「跌了该补多少」，它让你自己去算；你说「帮我盯一下」，它回你一句「建议设置提醒」。
 
-**dsh-astock** 是一个 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)（下称 DSH）插件。装上之后，同样的问题，AI 会先去**取真实行情**、读你的**真实持仓台账**，再算给你看：现价、成本、浮盈、T+1 可卖多少、距止损还有几个点、这笔卖出的费用是多少、这一轮该买哪几只各买多少股。
+**dsh-astock** 是一个 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)（下称 DSH）插件。装上之后，同样的问题，AI 会先去**取真实行情**、读你的**真实持仓台账**，再算给你看。
 
 它**不接任何委托通道**——没有下单、没有撤单、不登录你的券商。执行永远是你自己在券商 App 里点，插件只做三件事：取数、记账、算账。
 
 > **⚠️ 先说免责**：本插件是**工具**，不是投顾。它不荐股、不代客理财、不承诺任何收益。行情来自公开接口，可能延迟、缺失或出错；算账结果取决于你自己录入的成交与费率；模型也可能读错数据。**据此操作，盈亏自负——作者与贡献者不承担任何责任。** 完整条款见文末「[免责声明](#免责声明)」。
 
-一行命令装好，不用改 DSH 任何源码。
+## 30 秒装上
+
+```sh
+# 在 DeepSeek Harness 里打开「设置 → 插件」，或命令行：
+dsh plugin --profile desktop add github:LaynePeng/dsh-astock
+```
+
+装完**完全退出 DSH 再打开**，右栏 `+` 里选「A股助手」。npm 包尚未发布，原因与进度见 [RELEASE.md](RELEASE.md)。
+
+> 支持 macOS / Windows；QQ / 163 邮箱用授权码发提醒，Outlook / Hotmail 用 OAuth2（内置公共客户端，不用注册 Azure）。
 
 ---
 
-## 先看它长什么样
+## 面板长这样
 
-装好后，右栏会多一个 **A股** 标签页（右上角 tab 条末尾的 `+` 里选「A股助手」）：
+### 持仓：一眼看清该不该动手
 
-```text
-┌─ A股 ──────────────────────────────────┐
-│ 持仓  选股  维护  配置  通知    23:41 ⟳│
-├────────────────────────────────────────┤
-│ ┌──────────────┐ ┌──────────────┐      │
-│ │ 总资产       │ │ 持仓市值     │      │
-│ │ 300,030.00 元│ │ 100,300.00 元│      │
-│ │ 今日 +160.00 │ │ 占总资产 33% │      │
-│ └──────────────┘ └──────────────┘      │
-│                                        │
-│ 持仓 · 3 只                            │
-│ ┌────────────────────────────────────┐ │
-│ │ 浦发银行  600000         +1.62%    │ │
-│ │ 现价 10.03    成本 9.505           │ │
-│ │ 浮盈 +524.90  盈亏% +5.52%         │ │
-│ │ 市值 10,030.00  占比 33.4% / 25%   │ │
-│ │ ▓▓▓▓▓▓▓░░░░░░░░░░  距止损          │ │
-│ │ ⚠ 单票占比 33.4% 超上限            │ │
-│ │ 可卖 1000 / 持有 1000 股           │ │
-│ └────────────────────────────────────┘ │
-│ 自选观察                               │
-│ 宁德时代 300750      254.22   -3.73%   │
-└────────────────────────────────────────┘
-```
+<p align="center">
+  <img src="docs/images/panel-portfolio.png" alt="持仓页：总资产、浮动盈亏、止损余量、T+1 可卖" width="440">
+</p>
 
-> 上图是界面示意（字段与真实渲染一致），不是截图。
+- 总资产 / 持仓市值 / 浮动盈亏 / 可用资金，加上「今日超额」（对沪指）与近 5 日收盘净值曲线
+- 每只持仓：现价、成本、浮盈、占比（对比单票上限）、止损已用掉多少、今日可卖多少
+- 触发止损/止盈/超仓时，卡片直接标红并给出原因
 
-对话里也完全一样能问。下面这些**直接复制就能用**：
+### 交易：记一笔，或挂一张事件单
+
+<p align="center">
+  <img src="docs/images/panel-trade.png" alt="交易页：录入成交、新建事件单、最近流水、待触发事件单" width="440">
+</p>
+
+- **记一笔**：买/卖、代码、价格、数量、日期、费用（可覆盖）、备注；保存后自动更新成本、T+1 与已实现盈亏
+- **新建事件单**：代码、方向、触发条件（价格 ≤ / ≥）、触发价、数量、委托价、有效期——直接照着券商 App 的条件单填
+- 流水删除要确认两次，删完按剩余流水重算；事件单可撤销，成交后由 `astock_sync` 自动匹配核销
+
+### 计划：两类定时，分开看
+
+<p align="center">
+  <img src="docs/images/panel-auto.png" alt="计划页：每日存档/邮件探测 + 盯盘/盘后报告" width="440">
+</p>
+
+- **插件自己的定时**：每日 15:05 存档 + 收盘净值、邮件探测——不在 DSH 的自动化任务里，这里能看到上次执行结果
+- **DSH 定时任务**：盯盘（工作日 9:00–14:59）与盘后报告（15:05），可一键启动/停止
+- 左栏时钟图标「自动化任务」里能看到全部 DSH 任务；这里是与本插件相关的那几条
+
+---
+
+## 对话里也能用
+
+下面这些**直接复制就能用**：
 
 > 「我现在的持仓怎么样，有没有该处理的？」
 >
@@ -125,11 +156,11 @@
 
 ---
 
-## 怎么装
+## 安装细节（包名 / Windows / 排错）
 
 ### ⚠️ 先确认包名：本项目不是 npm 上的 `dsh-astock`
 
-本项目的包名是 **`@laynepeng/dsh-astock`**，目前**没有发布到 npm**，只能用本地仓库 / `link:` 安装。
+本项目的包名是 **`@laynepeng/dsh-astock`**，目前**没有发布到 npm**。正式安装用 `dsh plugin --profile desktop add github:LaynePeng/dsh-astock`；改源码调试时再用本地 `link:`。
 
 > **不要**在「设置 → 插件」或插件市场里按 `dsh-astock` 搜索安装：npm 上的 [`dsh-astock`](https://www.npmjs.com/package/dsh-astock) 是**另一位作者**的「A股港股量化工作台」，和本插件不是同一个包。
 >
@@ -143,7 +174,13 @@
 
 ### 装
 
-**桌面版（推荐）**，在**本仓库目录**执行：
+**正式安装**（任何机器，从 GitHub 拉）：
+
+```sh
+dsh plugin --profile desktop add github:LaynePeng/dsh-astock
+```
+
+**本地调试**（改了源码要立刻生效）：
 
 ```sh
 dsh plugin --profile desktop add link:/绝对路径/to/dsh-astock
@@ -159,7 +196,7 @@ node -e "const p=require(process.argv[1]); console.log(p.name, p.version)" \
   ~/.dsh/profiles/desktop/node_modules/@laynepeng/dsh-astock/package.json
 ```
 
-Windows（cmd）：把 `~/.dsh` 换成 `%USERPROFILE%\.dsh`；PowerShell 用 `$env:USERPROFILE\.dsh`。没有这个目录，就说明装的是别的包（例如 npm 上的 `dsh-astock`），先 `remove` 再按上面的 `link:` 装。
+Windows（cmd）：把 `~/.dsh` 换成 `%USERPROFILE%\.dsh`；PowerShell 用 `$env:USERPROFILE\.dsh`。没有这个目录，就说明装的是别的包（例如 npm 上的 `dsh-astock`），先 `remove` 再按上面的 `github:` 装。
 
 ### 装完必须重启（这一步别跳）
 
