@@ -1,13 +1,17 @@
 # 发布与分发（让别人能搜到、能装）
 
-本插件目前只能从本地目录 `link:` 安装。要“别人也能看到并安装”，有三条路，按推荐顺序。
+要让“别人也能看到并安装”，有三条路，按推荐顺序。
 
-**当前状态（2026-11-09 核对）：**
+**当前状态（2026-11-09 15:30 更新）：**
 
-- GitHub 仓库 `LaynePeng/dsh-astock` **已公开**；
-- 仓库**还没有** `dsh-plugin` topic（提交列表前要加）；
-- npm 上 `@laynepeng/dsh-astock` **未占用**（404），`dsh-astock` 已被别人占用；
-- `npm pack` 当前产出 63 个文件、约 285 KB，内容完整。
+| 事项 | 状态 |
+|---|---|
+| GitHub 仓库公开 | ✅ |
+| topic `dsh-plugin`（及 deepseek-harness / a-share / stock / quant / trading-ledger） | ✅ 已加 |
+| 收录 PR | ✅ [awesome-dsh-plugin#13535](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin/pull/13535)（`check` 已过） |
+| 仓库年龄门槛（≥1 天） | ⏳ 门禁只差这一条，约 12 小时后自动通过，无需重新提交 |
+| npm 发布 | ❌ 未发布（这台机器 `npm whoami` 未登录） |
+| `npm pack` 产物 | ✅ 63 个文件、约 285 KB；已用 tarball 装进干净 profile 实测：`0.8.2 / 19 tools / configSchema=true / 45 字段` |
 
 | 方式 | 别人怎么装 | 能进市场搜索吗 | 成本 |
 |---|---|---|---|
@@ -30,18 +34,23 @@ A 和 B 不冲突：发 npm 之后，GitHub 仓库仍然是源码与 issue 的�
 
 ```sh
 # 0. 确认要发的内容（不会真的发）
-npm_config_cache=/tmp/npm-cache npm pack --dry-run
+npm pack --dry-run
 
-# 1. 登录（已登录可跳过）
-npm login
+# 1. 登录 **npmjs**（本机 ~/.npmrc 的 registry 是 npmmirror，直接 npm login 会登到镜像上）
+npm login --registry https://registry.npmjs.org/
+npm whoami --registry https://registry.npmjs.org/     # 必须打印 laynepeng
 
-# 2. 发布 scoped 包必须显式 public；package.json 已带 publishConfig.access=public
+# 2. 发布（publishConfig.registry 已指向 npmjs，access=public 也已声明）
 npm publish --access public
 
-# 3. 验证
-npm view @laynepeng/dsh-astock version
+# 3. 验证：能查到版本 + 能装上
+npm view @laynepeng/dsh-astock version --registry https://registry.npmjs.org/
 dsh plugin --profile desktop add @laynepeng/dsh-astock
 ```
+
+> 已实测：把 `npm pack` 出来的 tarball 装进干净 profile，宿主能起来，
+> `/api/dsh-astock/info` 返回 `version=0.8.2 / tools=19 / configSchema=true / settingsFields=45`，
+> 每日维护也能正常跑。所以 npm 发布后唯一的不确定项只有登录与 2FA。
 
 当前 `npm pack` 会带 63 个文件、约 285 KB（`lib/`、`cordis.patch.yml`、README、LICENSE、`scripts/recover.mjs`），没有 `tests/` 和临时文件。
 
