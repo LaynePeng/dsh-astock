@@ -10,7 +10,7 @@
 | topic `dsh-plugin`（及 deepseek-harness / a-share / stock / quant / trading-ledger） | ✅ 已加 |
 | 收录 PR | ✅ [awesome-dsh-plugin#13535](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin/pull/13535)（`check` 已过） |
 | 仓库年龄门槛（≥1 天） | ⏳ 门禁只差这一条，约 12 小时后自动通过，无需重新提交 |
-| npm 发布 | ❌ 未发布（这台机器 `npm whoami` 未登录） |
+| npm 发布 | ❌ 未发布：`laynepeng` 账号注册时邮箱填错，首次登录要邮箱 OTP，收不到（恢复流程见文末「npm 账号邮箱填错」） |
 | `npm pack` 产物 | ✅ 63 个文件、约 285 KB；已用 tarball 装进干净 profile 实测：`0.8.2 / 19 tools / configSchema=true / 45 字段` |
 
 | 方式 | 别人怎么装 | 能进市场搜索吗 | 成本 |
@@ -127,3 +127,20 @@ node scripts/recover.mjs --profile desktop
 ```
 
 > 第三方站点（dsh-plugin.org、dshfind.com）也会收录 GitHub 仓库，可以在那边按站点说明提交，属于锦上添花，不作为主渠道。
+
+---
+
+## npm 账号邮箱填错（收不到登录 OTP）
+
+npm 的规则（官方文档原文）：
+
+- **未验证邮箱不能发包**：*"You must verify your email address in order to publish packages to the registry."*
+- **登录可能要邮箱 OTP**：没开 2FA 时，npm 会把一次性密码发到账号邮箱（`receiving-a-one-time-password-over-email`）。
+- **邮箱填错/收不到**，官方给的自助恢复路径是提工单：
+
+1. 打开 <https://www.npmjs.com/login>，用**用户名 + 密码**登录（邮箱不参与登录）。
+2. 出现 Login Verification（要 OTP）时，点 **Try recovering your account**。
+3. 工单里填你的邮箱，**How can we help?** 选 **Reset my email**，说明：用户名 `laynepeng`、注册的大致时间、注册时把邮箱写错了、从未收到验证邮件、希望改成哪个邮箱。
+4. 提交后等 npm 支持处理；处理完用新邮箱收 OTP 登录，再到 Account Settings 确认 `email (verified)`。
+
+**在修好之前**：不要为了发 npm 而新建第二个账号——`@laynepeng` scope 只有这个账号能用，换账号意味着包名要一起改（`package.json`、`cordis.patch.yml`、两份 README、本文件、`release/` 下的 PR 材料）。收录 PR 已经能用 `github:LaynePeng/dsh-astock` 安装，npm 不是阻塞项。
