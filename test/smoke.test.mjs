@@ -732,3 +732,90 @@ test('盘后报告：report_on 创建独立会话任务，report_off 删除', as
   assert.equal(off.body.removed, 1);
   assert.equal(tasks.size, 0);
 });
+
+/** 本地今天（台账用本地日期，不能用 toISOString 的 UTC）。 */
+function localToday() {
+  const d = new Date();
+  const p = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
+test('交易面板：trade_save 落账 → trade 视图可见 → trade_delete 重算持仓', async () => {
+  const ledger = join(mkdtempSync(join(tmpdir(), 'dsh-astock-trade-')), 'ledger.sqlite');
+  const { ctx, routes } = fakeCtx();
+  apply(ctx, { ledgerPath: ledger });
+  const route = routes.find((r) => r.path === '/api/dsh-astock/panel');
+  assert.ok(route);
+
+  const saved = await postRoute(route, {
+    op: 'trade_save',
+    side: 'buy',
+    code: '600000',
+    name: '浦发银行',
+    price: 10,
+    shares: 100,
+    trade_date: localToday(),
+    note: '面板录入',
+  });
+  assert.equal(saved.body.ok, true);
+  assert.match(saved.body.message, /已录入买入/);
+
+  const tradeView = await callRoute(route, '/api/dsh-astock/panel?panel=trade');
+  assert.equal(tradeView.body.view, 'trade');
+  assert.equal(tradeView.body.ok, true);
+  assert.equal(tradeView.body.positions.length, 1);
+  assert.equal(tradeView.body.positions[0].code, '600000');
+  assert.equal(tradeView.body.positions[0].shares, 100);
+  assert.equal(tradeView.body.trades.length, 1);
+  const tradeId = tradeView.body.trades[0].id;
+  assert.ok(tradeId > 0);
+
+  const deleted = await postRoute(route, { op: 'trade_delete', trade_id: tradeId });
+  assert.equal(deleted.body.ok, true);
+  const after = await callRoute(route, '/api/dsh-astock/panel?panel=trade');
+  assert.equal(after.body.positions.length, 0);
+  assert.equal(after.body.trades.length, 0);
+});
+
+test('交易面板：trade_save 的校验错误会变成可读消息，而不是 500', async () => {
+  const ledger = join(mkdtempSync(join(tmpdir(), 'dsh-astock-trade-')), 'ledger.sqlite');
+  const { ctx, routes } = fakeCtx();
+  apply(ctx, { ledgerPath: ledger });
+  const route = routes.find((r) => r.path === '/api/dsh-astock/panel');
+
+  const badSide = await postRoute(route, { op: 'trade_save', side: 'hold', code: '600000', price: 10, shares: 100 });
+  assert.equal(badSide.body.ok, false);
+  assert.match(badSide.body.message, /buy|sell/);
+
+  const noPosition = await postRoute(route, {
+    op: 'trade_save', side: 'sell', code: '600000', price: 10, shares: 100, trade_date: localToday(),
+  });
+  assert.equal(noPosition.body.ok, false);
+  assert.match(noPosition.body.message, /无持仓/);
+});
+
+test('交易面板：plan_cancel 把待触发事件单标成 cancelled', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'dsh-astock-trade-'));
+  const ledger = join(dir, 'ledger.sqlite');
+  const { ctx, routes } = fakeCtx();
+  apply(ctx, { ledgerPath: ledger });
+  const route = routes.find((r) => r.path === '/api/dsh-astock/panel');
+
+  const { Ledger } = await import('../lib/js/ledger.js');
+  const store = new Ledger(ledger);
+  const plan = store.savePlan({
+    code: '600000', name: '浦发银行', side: 'sell', price: 9.2, shares: 100,
+    stop_loss: 9.2, reason: '条件单参数', kind: 'conditional_order',
+  });
+
+  const view = await callRoute(route, '/api/dsh-astock/panel?panel=trade');
+  assert.equal(view.body.plans.length, 1);
+  assert.equal(view.body.plans[0].plan_id, plan.plan_id);
+
+  const cancelled = await postRoute(route, { op: 'plan_cancel', plan_id: plan.plan_id });
+  assert.equal(cancelled.body.ok, true);
+  assert.equal(cancelled.body.plan.status, 'cancelled');
+
+  const after = await callRoute(route, '/api/dsh-astock/panel?panel=trade');
+  assert.equal(after.body.plans.length, 0);
+});

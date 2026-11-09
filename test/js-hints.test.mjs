@@ -144,3 +144,25 @@ test('astock_hint：触发止损 + 条件单落库 + 免责声明', async () => 
 
   fs.rmSync(dir, { recursive: true, force: true });
 });
+
+test('事件单：止损/止盈拆成两张券商可照抄的条件单', () => {
+  const buy = buildBuyOrder('600000', '浦发银行', 10, 5000, 8, 15, { prevClose: 10 });
+  const tickets = buy.eventOrders();
+  assert.equal(tickets.length, 2, '默认应生成止损 + 止盈两张');
+  assert.equal(tickets[0].label, '止损');
+  assert.match(tickets[0].trigger, /最新价 ≤ 9\.20/);
+  assert.equal(tickets[0].shares, buy.shares);
+  assert.equal(tickets[0].side, 'sell');
+  assert.equal(tickets[1].label, '止盈');
+  assert.match(tickets[1].trigger, /最新价 ≥ 11\.50/);
+
+  const block = buy.orderBlock();
+  assert.match(block, /事件单（券商 App → 条件单/);
+  assert.match(block, /止损：触发「最新价 ≤ 9\.20」→ 卖出/);
+
+  // 只有止损、没有止盈时只出一张
+  const stopOnly = buildSellOrder('600000', '浦发银行', 9.5, 100, 10, 8, 0, { prevClose: 10 });
+  const only = stopOnly.eventOrders();
+  assert.equal(only.length, 1);
+  assert.equal(only[0].label, '止损');
+});
