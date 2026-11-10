@@ -39,7 +39,7 @@ Fully quit and reopen DSH, then pick **A股助手** from the `+` at the end of t
 
 ![Positions page: equity, P&L, stop distance, T+1 sellable](docs/images/panel-portfolio.png)
 
-- Equity / market value / unrealised P&L / cash, plus today's excess return vs. the Shanghai index and a 5-day closing-equity curve.
+- Equity / market value / unrealised P&L / cash, plus today's excess return vs. the **market-wide median change** (falling back to the Shanghai index) and a 5-day closing-equity curve.
 - Each holding shows price, cost, P&L, weight vs. the single-name cap, how much of the stop is used, and how many shares are sellable today.
 - A stop, take-profit or overweight condition turns the card red with the reason.
 
@@ -132,7 +132,7 @@ dsh plugin --profile desktop add github:LaynePeng/dsh-astock
 
 Desktop uses the `desktop` profile; `--profile web` installs into a different profile and nothing shows up in the UI. Use `link:` rather than `file:`: the former symlinks, so source edits apply immediately; the latter copies.
 
-Confirm the package is this project (it must print `@laynepeng/dsh-astock 0.9.3`):
+Confirm the package is this project (it must print `@laynepeng/dsh-astock 0.9.4`):
 
 ```sh
 node -e "const p=require(process.argv[1]); console.log(p.name, p.version)" \
@@ -149,7 +149,7 @@ Verify:
 http://127.0.0.1:<your-dsh-port>/api/dsh-astock/info
 ```
 
-Expect `"version": "0.9.3"`, `"tools": 19`, `"configSchema": true`, `"settingsFields": 45`.
+Expect `"version": "0.9.4"`, `"tools": 19`, `"configSchema": true`, `"settingsFields": 45`.
 
 ### It broke: config looks wiped / DSH will not start
 
@@ -190,7 +190,7 @@ The plugin did **not** delete your config. When the host fails to boot, the Desk
 
 **Known failure: boot reports `duplicate factory registration for "dsh-astock"`**
 
-Up to 0.8.2, `lib/client.js` registered the browser module under `dsh-astock` while the package is `@laynepeng/dsh-astock`. DSH's client-modules key modules by **package name**: the row is not found after the first execution, the loader falls back to the package URL and runs the same bundle again, and the second registration throws this error, so web boot reports `@laynepeng/dsh-astock: import failed`. Fixed in 0.8.3 (the id is now `@laynepeng/dsh-astock`; 0.9.3 includes it). If it still happens after upgrading, the host is running the old files: remove `node_modules/@laynepeng/dsh-astock` and reinstall, or restart DSH.
+Up to 0.8.2, `lib/client.js` registered the browser module under `dsh-astock` while the package is `@laynepeng/dsh-astock`. DSH's client-modules key modules by **package name**: the row is not found after the first execution, the loader falls back to the package URL and runs the same bundle again, and the second registration throws this error, so web boot reports `@laynepeng/dsh-astock: import failed`. Fixed in 0.8.3 (the id is now `@laynepeng/dsh-astock`; 0.9.4 includes it). If it still happens after upgrading, the host is running the old files: remove `node_modules/@laynepeng/dsh-astock` and reinstall, or restart DSH.
 
 Uninstall: `dsh plugin --profile desktop remove @laynepeng/dsh-astock`.
 
