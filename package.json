@@ -1,6 +1,6 @@
 {
   "name": "@laynepeng/dsh-astock",
-  "version": "0.9.2",
+  "version": "0.9.3",
   "description": "A 股助手（DSH 插件）：真实行情 + 本地台账 + 选股/盯盘/回测，不接委托通道。",
   "license": "Apache-2.0",
   "author": "Layne Peng <appamail@hotmail.com>",

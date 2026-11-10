@@ -1001,3 +1001,30 @@ test('交易面板：事件单参数错误返回可读 message', async () => {
   assert.equal(badPrice.body.ok, false);
   assert.match(badPrice.body.message, /触发价/);
 });
+
+test('维护：备份节流、列表元数据与「当天最新不能删」经面板动作生效', async () => {
+  const ledger = join(mkdtempSync(join(tmpdir(), 'dsh-astock-maint-')), 'ledger.sqlite');
+  const { ctx, routes } = fakeCtx();
+  apply(ctx, { ledgerPath: ledger });
+  const route = routes.find((r) => r.path === '/api/dsh-astock/panel');
+
+  const first = await postRoute(route, { op: 'backup_create' });
+  assert.equal(first.body.ok, true);
+  assert.ok(!first.body.skipped);
+  const second = await postRoute(route, { op: 'backup_create' });
+  assert.equal(second.body.ok, true);
+  assert.equal(second.body.skipped, true);
+  assert.match(second.body.message, /刚备份过/);
+
+  const view = await callRoute(route, '/api/dsh-astock/panel?panel=maint');
+  assert.ok(Array.isArray(view.body.backups));
+  assert.ok(view.body.backups.length >= 1);
+  assert.match(view.body.backups[0].createdAt, /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/);
+  assert.ok(view.body.backups[0].sizeBytes > 0);
+
+  const refused = await postRoute(route, {
+    op: 'backup_delete', name: view.body.backups[0].name,
+  });
+  assert.equal(refused.body.ok, false);
+  assert.match(refused.body.message, /当天最新/);
+});

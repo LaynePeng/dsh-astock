@@ -187,7 +187,8 @@ test('备份列表：按名字倒序、limit 生效、坏 meta 不炸', () => {
   const archive = new Archive(join(dir, 'archive.sqlite'));
 
   const first = maintenance.createBackup({ ledger, archive });
-  const second = maintenance.createBackup({ ledger, archive });
+  // 关掉 60 秒节流，才能测「同一秒内两份名字不同」
+  const second = maintenance.createBackup({ ledger, archive, minIntervalMs: 0 });
   // 同一秒内两次：第二份带 pid 后缀，名字不同
   assert.notEqual(first.name, second.name);
 
