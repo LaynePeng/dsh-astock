@@ -56,8 +56,8 @@ dsh plugin --profile desktop add @laynepeng/dsh-astock
 
 发布前检查：
 
-- [ ] `package.json` 的 `version` 已递增（当前 `0.9.4`）
-- [ ] `npm test` 全绿（当前 184/184）
+- [ ] `package.json` 的 `version` 已递增（当前 `0.9.5`）
+- [ ] `npm test` 全绿（当前 215/215）
 - [ ] `cordis.patch.yml` 里 insert 的 `name` 与 `package.json` 的 `name` 完全一致
 - [ ] `files` 没漏掉 `lib/`、`cordis.patch.yml`、`scripts/recover.mjs`
 - [ ] README 第一屏写明「不是 npm 上的 `dsh-astock`」，避免装错

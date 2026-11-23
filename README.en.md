@@ -42,6 +42,7 @@ Fully quit and reopen DSH, then pick **A股助手** from the `+` at the end of t
 - Equity / market value / unrealised P&L / cash, plus today's excess return vs. the **market-wide median change** (falling back to the Shanghai index) and a 5-day closing-equity curve.
 - Each holding shows price, cost, P&L, weight vs. the single-name cap, how much of the stop is used, and how many shares are sellable today.
 - A stop, take-profit or overweight condition turns the card red with the reason.
+- The watchlist shows name, code, price and change, plus a **buy level** line — the `le`/`lt` price rules from the watch plan, highest first, at most three; a stock with no buy rule shows no extra line (display only — nothing is ever ordered from it).
 
 ### Trade: record a fill, or park a conditional order
 
