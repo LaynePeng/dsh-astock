@@ -14,6 +14,7 @@ import { join } from 'node:path';
 
 import { Ledger } from '../lib/js/ledger.js';
 import { runPortfolio } from '../lib/js/portfolio.js';
+import { buildJournal } from '../lib/js/panel.js';
 import {
   judgeVerify, renderList, renderRecorded, renderStats, verifyRuleText,
 } from '../lib/js/journal.js';
@@ -208,4 +209,133 @@ test('工具端到端：缺参数与异常都有可读错误，不抛栈', async
     /\[Error\].*没有这条判断/);
   assert.match(await runPortfolio({ action: 'journal_list', thesis_id: 'nope' }, opts),
     /\[Error\].*没有这条判断/);
+});
+
+// ── 档案面板（buildJournal）────────────────────────────────────────────
+
+/** 面板 tick：不是所有到期行都需要现价，只有带价位条件的才去取。 */
+test('回归：listTheses / countTheses 不传 today 也不抛 TDZ', () => {
+  // 曾经的写法是 `today = today()`：默认值解析到参数自身，抛
+  // ReferenceError: Cannot access 'today' before initialization。
+  // 所有工具调用都显式传了 today，所以只有面板（不传）踩得到。
+  const ledger = ledgerAt();
+  ledger.saveThesis({ code: '600000', claim: 'x', verify_date: '2020-01-01' });
+  assert.equal(ledger.listTheses().length, 1);
+  assert.equal(ledger.countTheses(), 1);
+  // 到期筛选在「不传 today」时也要按真实今天算
+  assert.equal(ledger.countTheses({ due: true }), 1);
+});
+
+test('档案面板：待复核优先，判定与工具端同源', async () => {
+  const ledger = ledgerAt();
+  ledger.saveThesis({
+    code: '600000', name: '浦发银行', stance: 'bear',
+    claim: '跌破 9.50 就减半', verify_date: '2026-11-20',
+    verify_kind: 'price_below', verify_price: 9.5, price_at: 9.6,
+  });
+  // 未到期的：不该进待复核
+  ledger.saveThesis({
+    code: '600519', name: '贵州茅台', stance: 'watch',
+    claim: '等回调', verify_date: '2099-01-01',
+  });
+
+  const data = await buildJournal({
+    ledger,
+    fetchQuotes: async (codes) => codes.map((code) => ({ code, name: '浦发银行', price: 9.41 })),
+  });
+
+  assert.equal(data.view, 'journal');
+  assert.equal(data.ok, true);
+  assert.equal(data.empty, false);
+  assert.equal(data.due.length, 1);
+  assert.equal(data.due[0].code, '600000');
+  assert.equal(data.due[0].judgeState, 'met');
+  assert.match(data.due[0].judgeText, /现价 9\.41 已跌破 9\.50/);
+  assert.equal(data.due[0].needsPrice, true);
+  assert.equal(data.due[0].overdueDays, 5);
+  assert.equal(data.recent.length, 2);
+
+  // KPI：待复核 2 条（含未到期那条）、已判定 0、兑现率不给数字
+  const kpi = Object.fromEntries(data.kpis.map((k) => [k.label, k.value]));
+  assert.equal(kpi['待复核'], 2);
+  assert.equal(kpi['已判定'], 0);
+  assert.equal(kpi['兑现率'], null);
+  assert.match(data.kpis.find((k) => k.label === '兑现率').note, /需先复核/);
+  assert.match(data.disclaimer, /不是上涨概率/);
+
+  // 面板判定与工具端是同一个函数：拿同一组输入比对，不能有第二套口径
+  const thesis = ledger.getThesis(data.due[0].thesisId);
+  assert.equal(judgeVerify(thesis, { price: 9.41 }).state, data.due[0].judgeState);
+});
+
+test('档案面板：没有价位条件的到期行不取行情（省一次请求）', async () => {
+  const ledger = ledgerAt();
+  ledger.saveThesis({
+    code: '600000', claim: '人工判断的一条', verify_date: '2020-01-01',
+  });
+  let asked = null;
+  const data = await buildJournal({
+    ledger,
+    fetchQuotes: async (codes) => { asked = codes; return []; },
+  });
+  assert.equal(asked, null, '不该为没有价位条件的行去拉行情');
+  assert.equal(data.due.length, 1);
+  assert.equal(data.due[0].needsPrice, false);
+  assert.equal(data.due[0].judgeState, null);
+  assert.equal(data.due[0].price, null);
+});
+
+test('档案面板：行情取不到时价格为 null，判定为「无法自动判定」，不编数字', async () => {
+  const ledger = ledgerAt();
+  ledger.saveThesis({
+    code: '600000', claim: 'x', verify_date: '2020-01-01',
+    verify_kind: 'price_below', verify_price: 9.5,
+  });
+  const data = await buildJournal({
+    ledger,
+    fetchQuotes: async () => { throw new Error('断网'); },
+  });
+  assert.equal(data.ok, true, '行情挂了不能让整页挂掉');
+  assert.equal(data.due[0].price, null);
+  assert.equal(data.due[0].judgeState, null);
+  assert.match(data.due[0].judgeText, /取不到当前价/);
+});
+
+test('档案面板：空档案给可操作的空态，不是空白页', async () => {
+  const data = await buildJournal({ ledger: ledgerAt(), fetchQuotes: async () => [] });
+  assert.equal(data.empty, true);
+  assert.equal(data.due.length, 0);
+  assert.equal(data.recent.length, 0);
+  assert.equal(data.kpis.length, 4);
+  assert.equal(Object.fromEntries(data.kpis.map((k) => [k.label, k.value]))['兑现率'], null);
+});
+
+test('档案面板：台账读不到返回 ok:false + hint，不抛给宿主', async () => {
+  const broken = {
+    thesisStats() { throw new Error('database is locked'); },
+    listTheses() { return []; },
+  };
+  const data = await buildJournal({ ledger: broken });
+  assert.equal(data.ok, false);
+  assert.match(data.error, /database is locked/);
+  assert.match(data.hint, /重启 DSH/);
+});
+
+test('审定后：待复核减少、兑现率立刻反映（面板重拉看到的数）', async () => {
+  const ledger = ledgerAt();
+  const a = ledger.saveThesis({
+    code: '600000', claim: 'A', verify_date: '2020-01-01',
+    verify_kind: 'price_below', verify_price: 9.5,
+  });
+  const opts = { ledger, fetchQuotes: async (codes) => codes.map((code) => ({ code, price: 9.4 })) };
+
+  const before = await buildJournal(opts);
+  assert.equal(before.due.length, 1);
+
+  ledger.settleThesis(a.thesis_id, { outcome: 'hit', price: 9.4 });
+  const after = await buildJournal(opts);
+  assert.equal(after.due.length, 0);
+  const kpi = Object.fromEntries(after.kpis.map((k) => [k.label, k.value]));
+  assert.equal(kpi['已判定'], 1);
+  assert.equal(kpi['兑现率'], 100);
 });

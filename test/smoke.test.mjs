@@ -525,6 +525,84 @@ test('宿主：panel=maint 返回维护结构（不联网）', async () => {
   assert.equal(body.automation.report.available, false);
 });
 
+test('宿主：panel=journal 返回档案结构，POST journal_settle 落库并改变兑现率', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'dsh-astock-test-'));
+  const ledgerPath = join(dir, 'ledger.sqlite');
+  // 先直接往台账里放一条「已到期」的判断（不联网、不经过工具层）
+  const { Ledger } = await import('../lib/js/ledger.js');
+  const seeded = new Ledger(ledgerPath);
+  const thesis = seeded.saveThesis({
+    code: '600000',
+    name: '浦发银行',
+    claim: '跌破 9.50 就减半',
+    verify_date: '2020-01-01',
+    // 刻意不给价位条件：面板就不会为它去拉行情，这条用例保持离线
+  });
+
+  const { ctx, routes } = fakeCtx();
+  apply(ctx, { ledgerPath });
+  const route = routes.find((r) => r.path === '/api/dsh-astock/panel');
+  assert.ok(route, '必须注册面板端点');
+
+  const first = await callRoute(route, '/api/dsh-astock/panel?panel=journal');
+  assert.equal(first.status, 200);
+  assert.equal(first.body.view, 'journal', 'panel=journal 必须返回 journal 视图，不能回落到 portfolio');
+  assert.equal(first.body.ok, true);
+  assert.equal(first.body.due.length, 1);
+  assert.equal(first.body.due[0].thesisId, thesis.thesis_id);
+  const kpiBefore = Object.fromEntries(first.body.kpis.map((k) => [k.label, k.value]));
+  assert.equal(kpiBefore['待复核'], 1);
+  assert.equal(kpiBefore['兑现率'], null);
+
+  // 面板的「兑现」按钮走的就是这个 op
+  const posted = await postRoute(route, {
+    op: 'journal_settle',
+    thesis_id: thesis.thesis_id,
+    outcome: 'hit',
+    price: 9.4,
+  });
+  assert.equal(posted.status, 200);
+  assert.equal(posted.body.ok, true);
+  assert.match(posted.body.message, /已审定/);
+
+  const after = await callRoute(route, '/api/dsh-astock/panel?panel=journal');
+  assert.equal(after.body.due.length, 0, '审定后就不该再出现在待复核里');
+  const kpiAfter = Object.fromEntries(after.body.kpis.map((k) => [k.label, k.value]));
+  assert.equal(kpiAfter['已判定'], 1);
+  assert.equal(kpiAfter['兑现率'], 100);
+  // 判过不能重复判：再点一次要被明确拒绝，而不是静默覆盖
+  const again = await postRoute(route, {
+    op: 'journal_settle', thesis_id: thesis.thesis_id, outcome: 'miss',
+  });
+  assert.equal(again.body.ok, false);
+  assert.match(again.body.message, /不能重复判定/);
+});
+
+test('宿主：journal_settle 参数非法时给出可读错误（不 500、不写脏数据）', async () => {
+  const ledger = join(mkdtempSync(join(tmpdir(), 'dsh-astock-test-')), 'ledger.sqlite');
+  const { ctx, routes } = fakeCtx();
+  apply(ctx, { ledgerPath: ledger });
+  const route = routes.find((r) => r.path === '/api/dsh-astock/panel');
+
+  const noId = await postRoute(route, { op: 'journal_settle', outcome: 'hit' });
+  assert.equal(noId.body.ok, false);
+  assert.match(noId.body.message, /thesis_id/);
+
+  const badOutcome = await postRoute(route, { op: 'journal_settle', thesis_id: 'T1', outcome: 'yes' });
+  assert.equal(badOutcome.body.ok, false);
+  assert.match(badOutcome.body.message, /hit/);
+
+  const badPrice = await postRoute(route, {
+    op: 'journal_settle', thesis_id: 'T1', outcome: 'hit', price: 'abc',
+  });
+  assert.equal(badPrice.body.ok, false);
+  assert.match(badPrice.body.message, /到期价/);
+
+  const missing = await postRoute(route, { op: 'journal_settle', thesis_id: 'T-nope', outcome: 'hit' });
+  assert.equal(missing.body.ok, false);
+  assert.match(missing.body.message, /没有这条判断/);
+});
+
 test('宿主：下载端点返回附件头与可解析的台账 JSON', async () => {
   const ledger = join(mkdtempSync(join(tmpdir(), 'dsh-astock-test-')), 'ledger.sqlite');
   const { ctx, routes } = fakeCtx();
