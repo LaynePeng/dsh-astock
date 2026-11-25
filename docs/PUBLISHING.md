@@ -56,7 +56,7 @@ dsh plugin --profile desktop add @laynepeng/dsh-astock
 
 发布前检查：
 
-- [ ] `package.json` 的 `version` 已递增（当前 `0.9.5`）
+- [ ] `package.json` 的 `version` 已递增（当前 `0.9.6`）
 - [ ] `npm test` 全绿（当前 215/215）
 - [ ] `cordis.patch.yml` 里 insert 的 `name` 与 `package.json` 的 `name` 完全一致
 - [ ] `files` 没漏掉 `lib/`、`cordis.patch.yml`、`scripts/recover.mjs`
@@ -85,8 +85,8 @@ url: https://github.com/LaynePeng/dsh-astock
 name: LaynePeng/dsh-astock
 category: tools
 description:
-  en: 'A-share assistant: 19 tools for quotes, K-line, screening, sentiment and backtests, plus a manual trade ledger, a sidebar panel, daily archive snapshots and risk-alert email. No broker connection or order placement.'
-  zh: 'A 股助手：19 个行情/选股/舆情/回测工具，外加手工交易台账、右栏面板、每日存档与高风险邮件提醒；不接券商、不下单。'
+  en: 'A-share assistant: 19 tools for quotes, K-line, screening, sentiment, earnings-calendar and backtests, plus a manual trade ledger, a judgment journal you can re-check against real prices, a sidebar panel, daily archive snapshots and risk-alert email. No broker connection or order placement.'
+  zh: 'A 股助手：19 个行情/选股/舆情/财报日历/回测工具，外加手工交易台账、可回看复核的判断留痕、右栏面板、每日存档与高风险邮件提醒；不接券商、不下单。'
 ```
 
 规则要点（来自 `contributing.md`）：

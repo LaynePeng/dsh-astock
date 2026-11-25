@@ -370,7 +370,7 @@
   },
   {
     "name": "astock_portfolio",
-    "description": "台账总览：持仓（实时浮盈/占比/今日盈亏）+ 可用资金 + 已实现盈亏 + 累计费用。action=trades 查流水；action=set_cash 设资金；action=delete_trade 删错录的流水（会自动按剩余流水重算成本）；action=summary 只要汇总。",
+    "description": "台账总览：持仓（实时浮盈/占比/今日盈亏）+ 可用资金 + 已实现盈亏 + 累计费用。action=trades 查流水；action=set_cash 设资金；action=delete_trade 删错录的流水（会自动按剩余流水重算成本）；action=summary 只要汇总。**判断留痕（研究档案）**：action=journal_record 记一条判断（判断原文+依据+支持/反对证据+复核日+可复算的价位条件，自动存当时价格与数据快照）；action=journal_list 看档案（due=true 只看该复核的，带现价与条件的实时判定）；action=journal_settle 用到期真实价格审定 hit/miss/void；action=journal_stats 看过去判断的兑现率。记的是**已发生的判断**，没有目标价、没有概率；兑现率是历史命中情况，不是未来上涨概率。",
     "parameters": {
       "type": "object",
       "properties": {
@@ -381,9 +381,13 @@
             "summary",
             "trades",
             "set_cash",
-            "delete_trade"
+            "delete_trade",
+            "journal_record",
+            "journal_list",
+            "journal_settle",
+            "journal_stats"
           ],
-          "description": "默认 list"
+          "description": "默认 list。判断留痕用 journal_record / journal_list / journal_settle / journal_stats"
         },
         "cash": {
           "type": "number",
@@ -395,11 +399,85 @@
         },
         "code": {
           "type": "string",
-          "description": "action=trades 时按代码过滤"
+          "description": "action=trades 按代码过滤；journal_* 时限定标的"
         },
         "limit": {
           "type": "number",
-          "description": "action=trades 返回条数，默认 30"
+          "description": "action=trades / journal_list 返回条数，默认 30"
+        },
+        "claim": {
+          "type": "string",
+          "description": "journal_record 必填：判断原文（你当时怎么想的，可含条件与时限）"
+        },
+        "stance": {
+          "type": "string",
+          "enum": [
+            "bull",
+            "bear",
+            "watch"
+          ],
+          "description": "journal_record：方向，看多 bull / 看空 bear / 只观察 watch（默认 watch）"
+        },
+        "basis": {
+          "type": "string",
+          "description": "journal_record：依据（数据/公告/逻辑，越具体越好）"
+        },
+        "evidence_for": {
+          "type": "string",
+          "description": "journal_record：支持这条判断的证据，一行一条"
+        },
+        "evidence_against": {
+          "type": "string",
+          "description": "journal_record：反对这条判断的证据，一行一条（分列计数是重点，别只记支持的）"
+        },
+        "verify_date": {
+          "type": "string",
+          "description": "journal_record：复核日期 YYYY-MM-DD，到期用真实价格判定"
+        },
+        "verify_kind": {
+          "type": "string",
+          "enum": [
+            "price_below",
+            "price_above"
+          ],
+          "description": "journal_record：可复算的复核条件——跌破 price_below / 站上 price_above；留空＝到期人工判定"
+        },
+        "verify_price": {
+          "type": "number",
+          "description": "journal_record：复核条件的具体价位（配合 verify_kind）"
+        },
+        "prev_id": {
+          "type": "string",
+          "description": "journal_record：在上一版判断上叠新版（判断演进留版本）"
+        },
+        "thesis_id": {
+          "type": "string",
+          "description": "journal_*：判断 id（journal_settle 必填；journal_list 时看单条详情）"
+        },
+        "outcome": {
+          "type": "string",
+          "enum": [
+            "hit",
+            "miss",
+            "void"
+          ],
+          "description": "journal_settle：hit 兑现 / miss 未兑现 / void 作废（作废不计入兑现率）"
+        },
+        "due": {
+          "type": "boolean",
+          "description": "journal_list：true 只看已到复核日且尚未判定的"
+        },
+        "note": {
+          "type": "string",
+          "description": "journal_settle：审定说明"
+        },
+        "name": {
+          "type": "string",
+          "description": "journal_record：名称（可留空，自动取行情里的）"
+        },
+        "price": {
+          "type": "number",
+          "description": "journal_record 记录价（留空取实时价）/ journal_settle 到期价"
         }
       },
       "required": []
@@ -803,7 +881,7 @@
   },
   {
     "name": "astock_extra",
-    "description": "**扩展数据面**（一次调用覆盖 17 类数据，移植自 a-stock-data 的端网点位）：打板情绪、题材归因、人气热榜、行业排名、板块资金流、ST 名单、两融、大宗交易、股东户数、分红送转、限售解禁、龙虎榜、板块归属、筹码分布、事件数据、研究资料、宏观利率。\n**与已有工具的分工（别选错）**：\n· 个股资金流 → `astock_flow`；**板块**资金流 → 本工具 action=board_flow；\n· 个股实时价/K线 → `astock_quote` / `astock_kline`；\n· 舆情七类证据（公告/研报/新闻/热度/龙虎榜/两融/股东户数）→ `astock_sentiment`；本工具给的是**同类数据的明细表**（含席位、金额、区间），`astock_sentiment` 给的是**带可靠度与背离提示的归集**。\n**各 action 的配套参数**：\n· limit_sentiment（打板情绪：涨跌停/炸板率/连板梯队/涨停原因）date\n· strong（同花顺题材归因）date；hot（人气热榜）period=hour/day\n· industry（行业涨幅榜）top_n；board_flow（板块资金流）board_type=industry/concept/region + period=today/5d/10d + top_n\n· st（ST 名单）market/limit；concepts（个股板块归属）code\n· margin / block_trade / holders / dividend / lockup / lhb / chips：code（必填）\n· chips 另支持 days（窗口，默认 150）/ decay（换手衰减 1.0~2.0）/ adjust\n· lhb 不给 code ＝ 全市场龙虎榜（配 date、min_net_wan）\n· events（事件数据）event=forecast/survey/holder_trade/buyback/pledge/ipo/convertible，配 code / days / limit / direction / report_date\n· docs（研究资料）doc=announce(巨潮公告)/report(研报)/finance(财报三表)，配 code / limit / months / report_type=fzb/lrb/llb\n· macro（宏观利率）macro=lpr/pmi/yield/repo/calendar，配 days / curve / kind=FR|FDR / year+month\n**口径底线**：缺数据一律显示「-」不用 0 代替；不做涨跌预测、不给概率、不合成情绪分；筹码分布是模型估算（按日 K 与换手率递推），不是交易所披露的真实持仓。",
+    "description": "**扩展数据面**（一次调用覆盖 18 类数据，移植自 a-stock-data 的端网点位）：打板情绪、题材归因、人气热榜、行业排名、板块资金流、ST 名单、两融、大宗交易、股东户数、分红送转、限售解禁、龙虎榜、板块归属、筹码分布、事件数据、研究资料、宏观利率、财报预约披露。\n**与已有工具的分工（别选错）**：\n· 个股资金流 → `astock_flow`；**板块**资金流 → 本工具 action=board_flow；\n· 个股实时价/K线 → `astock_quote` / `astock_kline`；\n· 舆情七类证据（公告/研报/新闻/热度/龙虎榜/两融/股东户数）→ `astock_sentiment`；本工具给的是**同类数据的明细表**（含席位、金额、区间），`astock_sentiment` 给的是**带可靠度与背离提示的归集**。\n**各 action 的配套参数**：\n· limit_sentiment（打板情绪：涨跌停/炸板率/连板梯队/涨停原因）date\n· strong（同花顺题材归因）date；hot（人气热榜）period=hour/day\n· industry（行业涨幅榜）top_n；board_flow（板块资金流）board_type=industry/concept/region + period=today/5d/10d + top_n\n· st（ST 名单）market/limit；concepts（个股板块归属）code\n· margin / block_trade / holders / dividend / lockup / lhb / chips：code（必填）\n· chips 另支持 days（窗口，默认 150）/ decay（换手衰减 1.0~2.0）/ adjust\n· lhb 不给 code ＝ 全市场龙虎榜（配 date、min_net_wan）\n· events（事件数据）event=forecast/survey/holder_trade/buyback/pledge/ipo/convertible，配 code / days / limit / direction / report_date\n· docs（研究资料）doc=announce(巨潮公告)/report(研报)/finance(财报三表)，配 code / limit / months / report_type=fzb/lrb/llb\n· macro（宏观利率）macro=lpr/pmi/yield/repo/calendar，配 days / curve / kind=FR|FDR / year+month\n· earnings（财报预约披露日历）：date 起始日 + days 窗口；会与台账持仓/自选交叉，列出窗口内谁要披露、逐日节奏。预约日可改期，以实际披露为准\n**口径底线**：缺数据一律显示「-」不用 0 代替；不做涨跌预测、不给概率、不合成情绪分；筹码分布是模型估算（按日 K 与换手率递推），不是交易所披露的真实持仓。",
     "parameters": {
       "type": "object",
       "properties": {
@@ -826,9 +904,10 @@
             "chips",
             "events",
             "docs",
-            "macro"
+            "macro",
+            "earnings"
           ],
-          "description": "要取哪一类数据。打板情绪=limit_sentiment / 题材归因=strong / 热榜=hot / 行业排名=industry / 板块资金流=board_flow / ST名单=st / 两融=margin / 大宗=block_trade / 股东户数=holders / 分红=dividend / 解禁=lockup / 龙虎榜=lhb / 板块归属=concepts / 筹码分布=chips / 事件数据=events / 研究资料=docs / 宏观利率=macro"
+          "description": "要取哪一类数据。打板情绪=limit_sentiment / 题材归因=strong / 热榜=hot / 行业排名=industry / 板块资金流=board_flow / ST名单=st / 两融=margin / 大宗=block_trade / 股东户数=holders / 分红=dividend / 解禁=lockup / 龙虎榜=lhb / 板块归属=concepts / 筹码分布=chips / 事件数据=events / 研究资料=docs / 宏观利率=macro / 财报预约披露日历=earnings"
         },
         "code": {
           "type": "string",
