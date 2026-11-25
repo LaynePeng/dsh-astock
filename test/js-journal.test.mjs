@@ -14,7 +14,7 @@ import { join } from 'node:path';
 
 import { Ledger } from '../lib/js/ledger.js';
 import { runPortfolio } from '../lib/js/portfolio.js';
-import { buildJournal } from '../lib/js/panel.js';
+import { buildEarnings, buildJournal, recordThesisForm } from '../lib/js/panel.js';
 import {
   judgeVerify, renderList, renderRecorded, renderStats, verifyRuleText,
 } from '../lib/js/journal.js';
@@ -338,4 +338,148 @@ test('审定后：待复核减少、兑现率立刻反映（面板重拉看到�
   const kpi = Object.fromEntries(after.kpis.map((k) => [k.label, k.value]));
   assert.equal(kpi['已判定'], 1);
   assert.equal(kpi['兑现率'], 100);
+});
+
+// ── 面板表单记录（recordThesisForm）────────────────────────────────────
+
+test('表单记录：一句话不写也能记，系统拼判断并补依据', async () => {
+  const ledger = ledgerAt();
+  const res = await recordThesisForm(ledger, {
+    code: '600900', stance: 'bull', verify_kind: 'price_below', verify_price: '31',
+  }, { fetchQuotes: async (codes) => codes.map((code) => ({ code, name: '长江电力', price: 31.96 })) });
+
+  assert.equal(res.ok, true);
+  const thesis = ledger.getThesis(res.thesis_id);
+  // 没写判断 → 用「方向 + 条件」拼一个能看懂的占位，而不是留空
+  assert.match(thesis.claim, /待补充判断.*跌破 31\.00/);
+  assert.equal(thesis.stance, 'bull');
+  assert.equal(thesis.verify_kind, 'price_below');
+  assert.equal(thesis.verify_price, 31);
+  assert.equal(thesis.name, '长江电力');
+  // 依据由后端补，并标明「待补充」——不假装这是用户写的
+  assert.match(thesis.basis, /面板表单记录.*待补充/);
+  // 记录价与快照自动落库
+  assert.equal(thesis.price_at, 31.96);
+  assert.match(thesis.snapshot, /面板表单/);
+  assert.match(res.message, /已记下/);
+});
+
+test('表单记录：写了判断就用原话，不改写', async () => {
+  const ledger = ledgerAt();
+  const res = await recordThesisForm(ledger, {
+    code: '600900', stance: 'bear', claim: '31 以下我就分批加，跌破 29 不再补',
+  }, { fetchQuotes: async () => [] });
+  assert.equal(res.ok, true);
+  assert.equal(ledger.getThesis(res.thesis_id).claim, '31 以下我就分批加，跌破 29 不再补');
+});
+
+test('表单记录：复核日默认 30 天后（不填也有人提醒）', async () => {
+  const ledger = ledgerAt();
+  const res = await recordThesisForm(ledger, { stance: 'watch' }, { fetchQuotes: async () => [] });
+  const thesis = ledger.getThesis(res.thesis_id);
+  assert.match(thesis.verify_date, /^\d{4}-\d{2}-\d{2}$/);
+  const days = Math.round(
+    (Date.parse(`${thesis.verify_date}T00:00:00Z`) - Date.parse(`${new Date().toISOString().slice(0, 10)}T00:00:00Z`))
+    / 86400000,
+  );
+  assert.ok(days >= 29 && days <= 31, `默认复核日应约 30 天后，实际 ${days} 天`);
+});
+
+test('表单记录：条件与价位必须成对，方向和价位都要校验', async () => {
+  const ledger = ledgerAt();
+  const opts = { fetchQuotes: async () => [] };
+  assert.equal((await recordThesisForm(ledger, { verify_kind: 'price_below' }, opts)).ok, false);
+  assert.match((await recordThesisForm(ledger, { verify_kind: 'price_below' }, opts)).message, /填价位/);
+  assert.match((await recordThesisForm(ledger, { verify_price: '31' }, opts)).message, /选条件/);
+  assert.match((await recordThesisForm(ledger, { verify_kind: 'price_below', verify_price: '0' }, opts)).message, /大于 0/);
+  assert.match((await recordThesisForm(ledger, { verify_kind: 'sideways', verify_price: '31' }, opts)).message, /跌破/);
+  assert.match((await recordThesisForm(ledger, { stance: 'strong-buy' }, opts)).message, /看多/);
+  assert.match((await recordThesisForm(ledger, { verify_date: '2026/12/25' }, opts)).message, /YYYY-MM-DD/);
+  // 全部被拒 → 一条都不该落库
+  assert.equal(ledger.thesisStats().total, 0);
+});
+
+test('表单记录：行情取不到也照样记，只是记录价留空', async () => {
+  const ledger = ledgerAt();
+  const res = await recordThesisForm(ledger, {
+    code: '600900', stance: 'watch', claim: '记一条',
+  }, { fetchQuotes: async () => { throw new Error('断网'); } });
+  assert.equal(res.ok, true);
+  assert.equal(ledger.getThesis(res.thesis_id).price_at, null);
+});
+
+test('表单记录后立刻能在档案面板看到并到期判定', async () => {
+  const ledger = ledgerAt();
+  const res = await recordThesisForm(ledger, {
+    code: '600900', stance: 'bear', verify_kind: 'price_below', verify_price: '32',
+    verify_date: '2020-01-01',
+  }, { fetchQuotes: async (codes) => codes.map((code) => ({ code, name: '长江电力', price: 31.96 })) });
+  const data = await buildJournal({
+    ledger,
+    fetchQuotes: async (codes) => codes.map((code) => ({ code, name: '长江电力', price: 31.96 })),
+  });
+  assert.equal(data.due.length, 1);
+  assert.equal(data.due[0].thesisId, res.thesis_id);
+  assert.equal(data.due[0].judgeState, 'met');
+  assert.match(data.due[0].judgeText, /已跌破 32\.00/);
+  // 表单下拉用的标的清单来自台账
+  assert.ok(Array.isArray(data.codes));
+  assert.match(data.defaultVerifyDate, /^\d{4}-\d{2}-\d{2}$/);
+});
+
+// ── 计划页「本周披露」小块（buildEarnings）──────────────────────────────
+
+test('本周披露：只列台账标的里还没披露的，已披露的数出来但不列', async () => {
+  const ledger = ledgerAt();
+  ledger.recordTrade('600900', 'buy', 31.62, 200, { tradeDate: '2026-11-23', name: '长江电力' });
+  ledger.addWatch('000001', '平安银行');
+  let asked = null;
+  const data = await buildEarnings({
+    ledger,
+    days: 7,
+    calendar: async (opts) => {
+      asked = opts;
+      return {
+        from: '2026-11-26',
+        to: '2026-12-02',
+        days: 7,
+        mine: [
+          { code: '600900', name: '长江电力', report_type: '2026年三季报', appoint_date: '2026-11-28', published: false, changed: true },
+          { code: '000001', name: '平安银行', report_type: '2026年三季报', appoint_date: '2026-11-27', published: true, changed: false },
+        ],
+      };
+    },
+  });
+  // 面板只要「我的持仓谁要披露」，跳过逐日计数（否则一页面板十几次请求）
+  assert.equal(asked.includeRhythm, false);
+  assert.deepEqual([...asked.codes].sort(), ['000001', '600900']);
+  assert.equal(data.ok, true);
+  assert.equal(data.rows.length, 1);
+  assert.equal(data.rows[0].code, '600900');
+  assert.equal(data.rows[0].changed, true);
+  assert.equal(data.published, 1);
+});
+
+test('本周披露：台账没有标的时给明确说明，不发请求', async () => {
+  let called = false;
+  const data = await buildEarnings({
+    ledger: ledgerAt(),
+    calendar: async () => { called = true; return {}; },
+  });
+  assert.equal(called, false);
+  assert.equal(data.ok, true);
+  assert.equal(data.rows.length, 0);
+  assert.match(data.note, /没有持仓或自选/);
+});
+
+test('本周披露：取数失败要区分于「没有披露」（不能假装空）', async () => {
+  const ledger = ledgerAt();
+  ledger.recordTrade('600900', 'buy', 31.62, 200, { tradeDate: '2026-11-23', name: '长江电力' });
+  const data = await buildEarnings({
+    ledger,
+    calendar: async () => { throw new Error('接口超时'); },
+  });
+  assert.equal(data.ok, false);
+  assert.equal(data.rows.length, 0);
+  assert.match(data.error, /接口超时/);
 });

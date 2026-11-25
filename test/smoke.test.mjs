@@ -578,6 +578,32 @@ test('宿主：panel=journal 返回档案结构，POST journal_settle 落库并�
   assert.match(again.body.message, /不能重复判定/);
 });
 
+test('宿主：POST journal_record 落库（面板表单），空表单也能记成一条', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'dsh-astock-test-'));
+  const { ctx, routes } = fakeCtx();
+  apply(ctx, { ledgerPath: join(dir, 'ledger.sqlite') });
+  const route = routes.find((r) => r.path === '/api/dsh-astock/panel');
+
+  // 只选一个方向、什么都不填 —— 这是「我不会记录」的人最可能的第一笔
+  const posted = await postRoute(route, { op: 'journal_record', stance: 'watch' });
+  assert.equal(posted.status, 200);
+  assert.equal(posted.body.ok, true);
+  assert.match(posted.body.message, /已记下/);
+
+  const view = await callRoute(route, '/api/dsh-astock/panel?panel=journal');
+  assert.equal(view.body.recent.length, 1);
+  assert.equal(view.body.empty, false);
+  // 表单要拿到标的清单与默认复核日，前端才能直接画出来
+  assert.ok(Array.isArray(view.body.codes));
+  assert.match(view.body.defaultVerifyDate, /^\d{4}-\d{2}-\d{2}$/);
+
+  // 非法输入要被明确拒绝，而不是落一条脏数据
+  const bad = await postRoute(route, { op: 'journal_record', verify_kind: 'price_below' });
+  assert.equal(bad.body.ok, false);
+  const still = await callRoute(route, '/api/dsh-astock/panel?panel=journal');
+  assert.equal(still.body.recent.length, 1, '非法提交不该落库');
+});
+
 test('宿主：journal_settle 参数非法时给出可读错误（不 500、不写脏数据）', async () => {
   const ledger = join(mkdtempSync(join(tmpdir(), 'dsh-astock-test-')), 'ledger.sqlite');
   const { ctx, routes } = fakeCtx();
@@ -982,6 +1008,9 @@ test('计划页：插件内部定时与 DSH 定时任务分开显示，且能一
   assert.equal(before.body.report.running, false);
   assert.equal(before.body.archive.enabled, true);
   assert.equal(before.body.mail.intervalSeconds, 300);
+  // 「本周披露」块随计划页一起返回；空台账时不发请求、给明确说明
+  assert.equal(before.body.earnings.ok, true);
+  assert.match(before.body.earnings.note, /没有持仓或自选/);
 
   const started = await postRoute(route, { op: 'watch_start' });
   assert.equal(started.body.ok, true);
