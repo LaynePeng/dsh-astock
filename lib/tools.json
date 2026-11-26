@@ -370,7 +370,7 @@
   },
   {
     "name": "astock_portfolio",
-    "description": "台账总览：持仓（实时浮盈/占比/今日盈亏）+ 可用资金 + 已实现盈亏 + 累计费用。action=trades 查流水；action=set_cash 设资金；action=delete_trade 删错录的流水（会自动按剩余流水重算成本）；action=summary 只要汇总。**判断留痕（研究档案）**：action=journal_record 记一条判断（判断原文+依据+支持/反对证据+复核日+可复算的价位条件，自动存当时价格与数据快照）；action=journal_list 看档案（due=true 只看该复核的，带现价与条件的实时判定）；action=journal_settle 用到期真实价格审定 hit/miss/void；action=journal_stats 看过去判断的兑现率。记的是**已发生的判断**，没有目标价、没有概率；兑现率是历史命中情况，不是未来上涨概率。",
+    "description": "台账总览：持仓（实时浮盈/占比/今日盈亏）+ 可用资金 + 已实现盈亏 + 累计费用 + **本金**。账户盈亏 = 总资产 − 净本金（用户登记过的出入金），这是「我投了 2 万现在赚没赚」的正确口径；流水盈亏 = 浮动 + 已实现，两者对不上会单列「账实差异」（分红/漏记成交/回填成本不实）。action=trades 查流水；action=set_cash 设资金；action=delete_trade 删错录的流水（会自动按剩余流水重算成本）；action=summary 只要汇总。**本金（出入金）**：action=capital 列出净本金与每笔出入金；action=capital_add 记一笔（入金正数、出金负数）；action=capital_delete 按 capital_id 删。没登记本金时收益率只能用流水盈亏倒推，有出入金就会失真。**判断留痕（研究档案）**：action=journal_record 记一条判断（判断原文+依据+支持/反对证据+复核日+可复算的价位条件，自动存当时价格与数据快照）；action=journal_list 看档案（due=true 只看该复核的，带现价与条件的实时判定）；action=journal_settle 用到期真实价格审定 hit/miss/void；action=journal_stats 看过去判断的兑现率。记的是**已发生的判断**，没有目标价、没有概率；兑现率是历史命中情况，不是未来上涨概率。",
     "parameters": {
       "type": "object",
       "properties": {
@@ -382,12 +382,15 @@
             "trades",
             "set_cash",
             "delete_trade",
+            "capital",
+            "capital_add",
+            "capital_delete",
             "journal_record",
             "journal_list",
             "journal_settle",
             "journal_stats"
           ],
-          "description": "默认 list。判断留痕用 journal_record / journal_list / journal_settle / journal_stats"
+          "description": "默认 list。本金用 capital / capital_add / capital_delete；判断留痕用 journal_record / journal_list / journal_settle / journal_stats"
         },
         "cash": {
           "type": "number",
@@ -469,7 +472,7 @@
         },
         "note": {
           "type": "string",
-          "description": "journal_settle：审定说明"
+          "description": "action=capital_add 的备注（如「初始投入」「分红转入」）/ journal_settle 审定说明"
         },
         "name": {
           "type": "string",
@@ -478,6 +481,18 @@
         "price": {
           "type": "number",
           "description": "journal_record 记录价（留空取实时价）/ journal_settle 到期价"
+        },
+        "amount": {
+          "type": "number",
+          "description": "action=capital_add 时的金额：入金正数、出金负数（不能为 0）"
+        },
+        "date": {
+          "type": "string",
+          "description": "action=capital_add 的出入金日期 YYYY-MM-DD，留空＝今天"
+        },
+        "capital_id": {
+          "type": "number",
+          "description": "action=capital_delete 时的出入金记录 id（先用 action=capital 查）"
         }
       },
       "required": []

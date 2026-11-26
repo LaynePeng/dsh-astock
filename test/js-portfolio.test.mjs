@@ -12,7 +12,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { Ledger } from '../lib/js/ledger.js';
-import { snapshot } from '../lib/js/portfolio.js';
+import { runPortfolio, snapshot } from '../lib/js/portfolio.js';
 
 function todayIso() {
   const d = new Date();
@@ -84,7 +84,7 @@ test('今日盈亏：卖出标的行情缺失时不抛异常，并提示未计�
 
 // ---------------------------------------------------------------- 累计盈亏
 
-test('累计盈亏：已卖出标的的亏损计入总额，并给出可核对的倒推本金', async () => {
+test('账户盈亏：已卖出标的的亏损计入总额，并给出可核对的倒推本金', async () => {
   const ledger = ledgerAt();
   ledger.setCash(20000);
   ledger.recordTrade('002241', 'buy', 25.00, 1000, { tradeDate: '2026-11-09', name: '歌尔股份' });
@@ -102,11 +102,11 @@ test('累计盈亏：已卖出标的的亏损计入总额，并给出可核对�
   assert.ok(data.float_pnl > 0);
   assert.ok(Math.abs(data.capital_base - (data.equity - expected)) < 0.02);
   assert.ok(data.total_pnl_pct !== null);
-  assert.match(snap.text, /累计盈亏（浮动 \+ 已实现）/);
-  assert.match(snap.text, /只看浮动盈亏会把/);
+  assert.match(snap.text, /流水盈亏（浮动 \+ 已实现）/);
+  assert.match(snap.text, /账户盈亏 = 总资产 − 净本金/);
 });
 
-test('累计盈亏：没有卖出流水时等于浮动盈亏，不虚构已实现', async () => {
+test('账户盈亏：没有卖出流水时等于浮动盈亏，不虚构已实现', async () => {
   const ledger = ledgerAt();
   ledger.setCash(20000);
   ledger.recordTrade('002241', 'buy', 26.00, 100, { tradeDate: '2026-11-09', name: '歌尔股份' });
@@ -115,4 +115,61 @@ test('累计盈亏：没有卖出流水时等于浮动盈亏，不虚构已实�
   assert.equal(snap.data.realized_sell_count, 0);
   assert.equal(snap.data.realized_pnl, 0);
   assert.equal(snap.data.total_pnl, snap.data.float_pnl);
+});
+
+// ---------------------------------------------------------------- 本金（出入金）
+
+test('本金：记一笔入金后总盈亏按「总资产 − 本金」，差额单列成账实差异', async () => {
+  const ledger = ledgerAt();
+  ledger.setCash(20000);
+  ledger.recordTrade('002241', 'buy', 25.00, 1000, { tradeDate: '2026-11-09', name: '歌尔股份' });
+  ledger.recordTrade('002241', 'sell', 23.00, 400, { tradeDate: '2026-11-10', name: '歌尔股份' });
+
+  const before = await snapshot(ledger, { fetchQuotes: quoteStub });
+  assert.equal(before.data.pnl_source, 'derived', '没登记本金时退回流口径');
+
+  ledger.addCapital(20000, { date: '2026-11-09', note: '初始投入' });
+  const snap = await snapshot(ledger, { fetchQuotes: quoteStub });
+
+  assert.equal(snap.data.pnl_source, 'capital');
+  assert.equal(snap.data.capital_total, 20000);
+  assert.equal(snap.data.capital_count, 1);
+  // 账户口径：总资产 − 本金
+  assert.ok(Math.abs(snap.data.total_pnl - (before.data.equity - 20000)) < 0.02,
+    `total=${snap.data.total_pnl}`);
+  // 差额必须等量关系成立：账户 − 流水 = 差异
+  assert.ok(Math.abs(snap.data.reconcile_gap
+    - (snap.data.total_pnl - snap.data.trade_pnl)) < 0.02);
+  assert.match(snap.text, /账户盈亏（总资产 − 本金）/);
+  assert.match(snap.text, /账实差异/);
+});
+
+test('本金：action=capital_add / capital / capital_delete 走同一本账', async () => {
+  const ledger = ledgerAt();
+  const opts = { ledger };
+  assert.match(await runPortfolio({ action: 'capital_add', amount: 0 }, opts), /\[Error\]/);
+  assert.match(await runPortfolio({
+    action: 'capital_add', amount: 20000, date: '2026-10-23', note: '初始投入',
+  }, opts), /净本金 20,000/);
+
+  const listed = await runPortfolio({ action: 'capital' }, opts);
+  assert.match(listed, /20,000\.00/);
+  assert.match(listed, /2026-10-23/);
+  assert.match(listed, /初始投入/);
+
+  const row = ledger.listCapital()[0];
+  assert.match(await runPortfolio({ action: 'capital_delete', capital_id: row.id }, opts), /已删除/);
+  assert.equal(ledger.netCapital().count, 0);
+  assert.equal(ledger.netCapital().total, 0);
+});
+
+test('本金：负数记出金，净本金取合计；没有记录时 count=0 不当 0 本金用', async () => {
+  const ledger = ledgerAt();
+  assert.deepEqual(ledger.netCapital(), { total: 0, count: 0, first_date: '' });
+  ledger.addCapital(20000, { date: '2026-10-23' });
+  ledger.addCapital(-5000, { date: '2026-11-01', note: '取出一部分' });
+  const net = ledger.netCapital();
+  assert.equal(net.total, 15000);
+  assert.equal(net.count, 2);
+  assert.equal(net.first_date, '2026-10-23');
 });

@@ -145,7 +145,7 @@ test('自选买点：没有计划文件时 buyAt 全为空数组且面板正常'
  * 用户报的问题：面板只显示「浮动盈亏」，亏着卖掉的票已经从持仓里消失，
  * 账面看上去永远是「这几只暂时浮亏」，看不到「这只已经认亏出局」。
  */
-test('累计盈亏：卖掉后的亏损必须留在账上，不能只报浮动盈亏', async () => {
+test('账户盈亏：卖掉后的亏损必须留在账上，不能只报浮动盈亏', async () => {
   const dir = mkdtempSync(join(tmpdir(), 'dsh-astock-panel-'));
   const ledger = new Ledger(join(dir, 'ledger.sqlite'));
   ledger.setCash(10000);
@@ -160,8 +160,8 @@ test('累计盈亏：卖掉后的亏损必须留在账上，不能只报浮动�
     fetchMedian: async () => ({ ok: false }),
   });
 
-  const kpi = snap.kpis.find((item) => item.label === '累计盈亏');
-  assert.ok(kpi, '面板必须有「累计盈亏」这一格');
+  const kpi = snap.kpis.find((item) => item.label === '账户盈亏');
+  assert.ok(kpi, '面板必须有「账户盈亏」这一格');
   assert.equal(snap.kpis.some((item) => item.label === '浮动盈亏'), false, '不要再把浮动盈亏当主指标');
   assert.equal(kpi.deltaLabel, '对本金');
 
@@ -171,7 +171,8 @@ test('累计盈亏：卖掉后的亏损必须留在账上，不能只报浮动�
   // 只报浮动会显示成正的；累计必须更差，这才是这个指标存在的理由
   assert.ok(kpi.value < ref.data.float_pnl, `累计 ${kpi.value} 应低于浮动 ${ref.data.float_pnl}`);
   assert.match(kpi.note, /已实现 -/);
-  assert.ok(kpi.hint.includes('浮动盈亏'));
+  assert.match(kpi.hint, /流水盈亏/);
+  assert.match(kpi.hint, /净本金/);
 
   // 结构化也给一份，客户端不必自己重算
   assert.ok(Math.abs(snap.pnl.total - expected) < 0.02);
@@ -181,16 +182,35 @@ test('累计盈亏：卖掉后的亏损必须留在账上，不能只报浮动�
   rmSync(dir, { recursive: true, force: true });
 });
 
-test('累计盈亏：没卖过时等于浮动盈亏，并明说没有卖出流水', async () => {
+test('账户盈亏：没卖过时等于浮动盈亏，并明说没有卖出流水', async () => {
   const ledger = setup();
   const snap = await buildPortfolio({
     ledger,
     fetchQuotes: quoteStub,
     fetchMedian: async () => ({ ok: false }),
   });
-  const kpi = snap.kpis.find((item) => item.label === '累计盈亏');
+  const kpi = snap.kpis.find((item) => item.label === '账户盈亏');
   assert.equal(kpi.value, snap.pnl.float);
+  assert.equal(snap.pnl.source, 'derived');
   assert.equal(snap.pnl.realized, 0);
   assert.equal(snap.pnl.sellCount, 0);
   assert.match(kpi.note, /暂无卖出流水/);
+});
+
+test('账户盈亏：登记本金后按账户口径，副行把账实差异拆出来', async () => {
+  const ledger = setup();
+  ledger.addCapital(10000, { date: '2026-01-05', note: '初始投入' });
+  const snap = await buildPortfolio({
+    ledger,
+    fetchQuotes: quoteStub,
+    fetchMedian: async () => ({ ok: false }),
+  });
+  const kpi = snap.kpis.find((item) => item.label === '账户盈亏');
+  assert.equal(kpi.deltaLabel, '对本金');
+  assert.equal(snap.pnl.source, 'capital');
+  assert.equal(snap.pnl.capital, 10000);
+  // 总资产 − 本金 与 浮动 + 已实现 不是同一个数，差额必须写在副行
+  assert.ok(Math.abs(snap.pnl.total - (kpi.value)) < 0.02);
+  assert.ok(Math.abs(snap.pnl.gap - (snap.pnl.total - snap.pnl.trade)) < 0.02);
+  assert.match(kpi.note, /差 /);
 });

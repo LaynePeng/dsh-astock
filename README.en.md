@@ -40,9 +40,10 @@ Fully quit and reopen DSH, then pick **A股助手** from the `+` at the end of t
 ![Positions page: KPI row and holding cards](docs/images/panel-portfolio.png)
 
 - Equity / market value / **lifetime P&L** / cash, plus today's excess return vs. the **market-wide median change** (falling back to the Shanghai index) and a 5-day closing-equity curve.
-- Lifetime P&L = unrealised P&L of current holdings **+ realised P&L of positions already sold** (both sides' fees included), with the split on the sub-line.
-  Reporting only unrealised P&L makes losing exits vanish from the account; the figure is exact, while the percentage next to it derives the capital base as
-  "equity − lifetime P&L" (register deposits/withdrawals to make it non-approximate — the hover tooltip states the basis).
+- **Account P&L = equity − net capital** (record deposits/withdrawals with `astock_portfolio action=capital_add`), with the sub-line splitting
+  unrealised · realised · reconciliation gap. Reporting only unrealised P&L makes losing exits vanish; when the cash-flow view
+  (unrealised + realised) disagrees with the account view, the difference is shown explicitly instead of being absorbed into a derived capital base.
+- Without a recorded capital base the tool falls back to the cash-flow view and says so in the tooltip.
 - Each holding shows price, cost, P&L, weight vs. the single-name cap, how much of the stop is used, and how many shares are sellable today.
 - A stop, take-profit or overweight condition turns the card red with the reason.
 - The watchlist shows name, code, price and change, plus a **buy level** line — the `le`/`lt` price rules from the watch plan, highest first, at most three; a stock with no buy rule shows no extra line (display only — nothing is ever ordered from it).
