@@ -226,11 +226,18 @@ test('回归：listTheses / countTheses 不传 today 也不抛 TDZ', () => {
   assert.equal(ledger.countTheses({ due: true }), 1);
 });
 
+/** 相对今天算日期：写死日期的用例到那天之后就会自己烂掉。 */
+function daysAgoText(days) {
+  const d = new Date(Date.now() - Number(days) * 86400000);
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
 test('档案面板：待复核优先，判定与工具端同源', async () => {
   const ledger = ledgerAt();
   ledger.saveThesis({
     code: '600000', name: '浦发银行', stance: 'bear',
-    claim: '跌破 9.50 就减半', verify_date: '2026-11-20',
+    claim: '跌破 9.50 就减半', verify_date: daysAgoText(5),
     verify_kind: 'price_below', verify_price: 9.5, price_at: 9.6,
   });
   // 未到期的：不该进待复核
@@ -252,6 +259,7 @@ test('档案面板：待复核优先，判定与工具端同源', async () => {
   assert.equal(data.due[0].judgeState, 'met');
   assert.match(data.due[0].judgeText, /现价 9\.41 已跌破 9\.50/);
   assert.equal(data.due[0].needsPrice, true);
+  // 复核日设在 5 天前：逾期天数按真实今天算，不写死日期
   assert.equal(data.due[0].overdueDays, 5);
   assert.equal(data.recent.length, 2);
 

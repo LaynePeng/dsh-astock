@@ -12,6 +12,7 @@ import { dirname, join } from 'node:path';
 
 import { Ledger } from '../lib/js/ledger.js';
 import { buildPortfolio } from '../lib/js/panel.js';
+import { snapshot } from '../lib/js/portfolio.js';
 
 function setup() {
   const dir = mkdtempSync(join(tmpdir(), 'dsh-astock-panel-'));
@@ -136,4 +137,60 @@ test('自选买点：没有计划文件时 buyAt 全为空数组且面板正常'
   }
 
   rmSync(dirname(ledger.path), { recursive: true, force: true });
+});
+
+// ---------------------------------------------------------------- 累计盈亏
+
+/**
+ * 用户报的问题：面板只显示「浮动盈亏」，亏着卖掉的票已经从持仓里消失，
+ * 账面看上去永远是「这几只暂时浮亏」，看不到「这只已经认亏出局」。
+ */
+test('累计盈亏：卖掉后的亏损必须留在账上，不能只报浮动盈亏', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'dsh-astock-panel-'));
+  const ledger = new Ledger(join(dir, 'ledger.sqlite'));
+  ledger.setCash(10000);
+  ledger.recordTrade('600000', 'buy', 10, 1000, { tradeDate: '2026-01-05', name: '浦发银行' });
+  // 8 元卖掉 400 股：已实现约 -800（含费用），但 remaining 600 股是浮盈的
+  ledger.recordTrade('600000', 'sell', 8, 400, { tradeDate: '2026-01-06', name: '浦发银行' });
+
+  const ref = await snapshot(ledger, { fetchQuotes: quoteStub });
+  const snap = await buildPortfolio({
+    ledger,
+    fetchQuotes: quoteStub,
+    fetchMedian: async () => ({ ok: false }),
+  });
+
+  const kpi = snap.kpis.find((item) => item.label === '累计盈亏');
+  assert.ok(kpi, '面板必须有「累计盈亏」这一格');
+  assert.equal(snap.kpis.some((item) => item.label === '浮动盈亏'), false, '不要再把浮动盈亏当主指标');
+  assert.equal(kpi.deltaLabel, '对本金');
+
+  const expected = Math.round((ref.data.float_pnl + ref.data.realized_pnl) * 100) / 100;
+  assert.ok(Math.abs(kpi.value - expected) < 0.02, `累计 ${kpi.value} vs ${expected}`);
+  assert.ok(ref.data.realized_pnl < 0, '8 元卖出 10 元成本的票，已实现必须是负的');
+  // 只报浮动会显示成正的；累计必须更差，这才是这个指标存在的理由
+  assert.ok(kpi.value < ref.data.float_pnl, `累计 ${kpi.value} 应低于浮动 ${ref.data.float_pnl}`);
+  assert.match(kpi.note, /已实现 -/);
+  assert.ok(kpi.hint.includes('浮动盈亏'));
+
+  // 结构化也给一份，客户端不必自己重算
+  assert.ok(Math.abs(snap.pnl.total - expected) < 0.02);
+  assert.equal(snap.pnl.sellCount, 1);
+  assert.ok(Math.abs(snap.pnl.capitalBase - (ref.data.equity - expected)) < 0.02);
+
+  rmSync(dir, { recursive: true, force: true });
+});
+
+test('累计盈亏：没卖过时等于浮动盈亏，并明说没有卖出流水', async () => {
+  const ledger = setup();
+  const snap = await buildPortfolio({
+    ledger,
+    fetchQuotes: quoteStub,
+    fetchMedian: async () => ({ ok: false }),
+  });
+  const kpi = snap.kpis.find((item) => item.label === '累计盈亏');
+  assert.equal(kpi.value, snap.pnl.float);
+  assert.equal(snap.pnl.realized, 0);
+  assert.equal(snap.pnl.sellCount, 0);
+  assert.match(kpi.note, /暂无卖出流水/);
 });

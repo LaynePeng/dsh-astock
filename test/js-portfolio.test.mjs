@@ -81,3 +81,38 @@ test('今日盈亏：卖出标的行情缺失时不抛异常，并提示未计�
   assert.equal(snap.data.today_pnl, 0);
   assert.match(snap.text, /行情缺失/);
 });
+
+// ---------------------------------------------------------------- 累计盈亏
+
+test('累计盈亏：已卖出标的的亏损计入总额，并给出可核对的倒推本金', async () => {
+  const ledger = ledgerAt();
+  ledger.setCash(20000);
+  ledger.recordTrade('002241', 'buy', 25.00, 1000, { tradeDate: '2026-11-09', name: '歌尔股份' });
+  // 23.00 卖掉 400 股：已实现亏约 820 元（含费用），剩下的 600 股按 25.69 仍是浮盈
+  ledger.recordTrade('002241', 'sell', 23.00, 400, { tradeDate: '2026-11-10', name: '歌尔股份' });
+
+  const snap = await snapshot(ledger, { fetchQuotes: quoteStub });
+  const data = snap.data;
+  const expected = Math.round((data.float_pnl + data.realized_pnl) * 100) / 100;
+
+  assert.ok(data.realized_pnl < 0, `已实现应为负：${data.realized_pnl}`);
+  assert.equal(data.realized_sell_count, 1);
+  assert.ok(Math.abs(data.total_pnl - expected) < 0.02, `total=${data.total_pnl} vs ${expected}`);
+  // 浮盈（现价 25.69 > 成本）与累计（含已实现亏损）方向相反才说明口径真的换了
+  assert.ok(data.float_pnl > 0);
+  assert.ok(Math.abs(data.capital_base - (data.equity - expected)) < 0.02);
+  assert.ok(data.total_pnl_pct !== null);
+  assert.match(snap.text, /累计盈亏（浮动 \+ 已实现）/);
+  assert.match(snap.text, /只看浮动盈亏会把/);
+});
+
+test('累计盈亏：没有卖出流水时等于浮动盈亏，不虚构已实现', async () => {
+  const ledger = ledgerAt();
+  ledger.setCash(20000);
+  ledger.recordTrade('002241', 'buy', 26.00, 100, { tradeDate: '2026-11-09', name: '歌尔股份' });
+
+  const snap = await snapshot(ledger, { fetchQuotes: quoteStub });
+  assert.equal(snap.data.realized_sell_count, 0);
+  assert.equal(snap.data.realized_pnl, 0);
+  assert.equal(snap.data.total_pnl, snap.data.float_pnl);
+});
