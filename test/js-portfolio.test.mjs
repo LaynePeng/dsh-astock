@@ -176,3 +176,25 @@ test('本金：负数记出金，净本金取合计；没有记录时 count=0 �
   assert.equal(net.count, 2);
   assert.equal(net.first_date, '2026-10-23');
 });
+
+test('账实差异：1 元以内的零头（手续费/校准四舍五入）不当成账不对', async () => {
+  const ledger = ledgerAt();
+  ledger.setCash(20000);
+  ledger.recordTrade('002241', 'buy', 25.00, 100, { tradeDate: '2026-11-09', name: '歌尔股份' });
+  const snap = await snapshot(ledger, { fetchQuotes: quoteStub });
+  // 本金 = 总资产 − 流水盈亏 + 0.4（模拟几百块口径外的四舍五入）
+  ledger.addCapital(20000);
+  const tuned = await snapshot(ledger, { fetchQuotes: quoteStub });
+  assert.ok(Math.abs(tuned.data.reconcile_gap) >= 1, '这个用例的差额本来就是几千块');
+  assert.match(tuned.text, /> 账实差异 [-+]?[\d,]/);
+
+  const ledger2 = ledgerAt();
+  ledger2.setCash(10000);
+  ledger2.recordTrade('002241', 'buy', 25.00, 100, { tradeDate: '2026-11-09', name: '歌尔股份' });
+  const base = await snapshot(ledger2, { fetchQuotes: quoteStub });
+  // 让账户口径与流水口径只差 0.4 元
+  ledger2.addCapital(Math.round((base.data.equity - base.data.trade_pnl - 0.4) * 100) / 100);
+  const tiny = await snapshot(ledger2, { fetchQuotes: quoteStub });
+  assert.ok(Math.abs(tiny.data.reconcile_gap) < 1, `gap=${tiny.data.reconcile_gap}`);
+  assert.doesNotMatch(tiny.text, /> 账实差异 [-+]?[\d,]/);
+});
