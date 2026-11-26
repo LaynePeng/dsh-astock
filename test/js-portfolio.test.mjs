@@ -142,6 +142,9 @@ test('本金：记一笔入金后总盈亏按「总资产 − 本金」，差额
     - (snap.data.total_pnl - snap.data.trade_pnl)) < 0.02);
   assert.match(snap.text, /账户盈亏（总资产 − 本金）/);
   assert.match(snap.text, /账实差异/);
+  // 差额要指明「台账从哪天开始」：开始记账之前的钱不在流水里
+  assert.equal(snap.data.ledger_start, '2026-11-09');
+  assert.match(snap.text, /台账第一笔成交是 2026-11-09/);
 });
 
 test('本金：action=capital_add / capital / capital_delete 走同一本账', async () => {
